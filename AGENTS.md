@@ -2,50 +2,33 @@
 
 ## Overview
 
-Ralph is an autonomous AI agent loop that runs AI coding tools (Codex CLI, Amp, or Claude Code) repeatedly until all PRD items are complete. Each iteration starts with fresh context.
+Ralph is a fresh-context benchmark research harness.
 
-## Commands
+The canonical control file is `research_program.json`.
+`prd.json` is legacy fallback only.
 
-```bash
-# Run the flowchart dev server
-cd flowchart && npm run dev
+## Research Loop
 
-# Build the flowchart
-cd flowchart && npm run build
+Ralph should move through:
+- benchmark overview
+- literature review
+- `idea.md`
+- early validations
+- implementation in `src/`
+- benchmark tuning
 
-# Run Ralph with Codex CLI (default)
-./ralph.sh [max_iterations]
+## Taste
 
-# Run Ralph with Amp
-./ralph.sh --tool amp [max_iterations]
-
-# Run Ralph with Claude Code
-./ralph.sh --tool claude [max_iterations]
-```
+- Prefer the smallest sharp idea.
+- Reject kitchen sinks.
+- One item should test one mechanism.
+- Complexity must earn its keep.
+- Negative evidence should kill weak ideas.
 
 ## Key Files
 
-- `ralph.sh` - The bash loop that spawns fresh tool instances (`--tool codex|amp|claude`)
-- `CODEX.md` - Instructions given to each Codex CLI instance
-- `prompt.md` - Instructions given to each Amp instance
-- `CLAUDE.md` - Instructions given to each Claude Code instance
-- `prd.json.example` - Example PRD format
-- `flowchart/` - Interactive React Flow diagram explaining how Ralph works
-
-## Flowchart
-
-The `flowchart/` directory contains an interactive visualization built with React Flow. It's designed for presentations and click-through demos.
-
-To run locally:
-```bash
-cd flowchart
-npm install
-npm run dev
-```
-
-## Patterns
-
-- Each iteration spawns a fresh AI coding agent instance with clean context
-- Memory persists via git history, `progress.txt`, and `prd.json`
-- Stories should be small enough to complete in one context window
-- Reusable learnings belong in `AGENTS.md`, not only in tool-specific prompt files
+- `ralph.sh` - harness runner
+- `research_program.json.example` - control file example
+- `idea.md` - best current idea
+- `research/` - overview, literature, validations, tuning artifacts
+- `CODEX.md` / `prompt.md` / `CLAUDE.md` - tool prompts

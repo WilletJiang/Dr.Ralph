@@ -1,0 +1,217 @@
+{
+  "project": "MathReasoningLab",
+  "branchName": "ralph/mathbench-harness",
+  "description": "Staged harness for producing a benchmark-breaking method with explicit evidence and taste constraints.",
+  "benchmark": {
+    "name": "MathBench-v2",
+    "primaryMetric": "accuracy",
+    "secondaryMetrics": [
+      "latency_ms",
+      "train_compute_multiplier"
+    ],
+    "baselineScore": 71.4,
+    "targetScore": 73.0,
+    "comparisonTarget": "official_best",
+    "constraints": [
+      "No external data",
+      "No hidden test-time ensembling",
+      "No benchmark leakage",
+      "Model size increase must stay under 5%",
+      "Inference latency increase must stay under 10%"
+    ]
+  },
+  "harness": {
+    "ideaFile": "idea.md",
+    "overviewFile": "research/overview.md",
+    "literatureFile": "research/literature/review.md",
+    "validationRoot": "research/validations",
+    "implementationTargetDir": "src",
+    "tuningRoot": "research/tuning",
+    "rules": [
+      "Do not skip directly to implementation before enough early validation evidence exists",
+      "Every validation run must save commands, configs, logs, results, and interpretation",
+      "idea.md must be revised when evidence changes the best idea",
+      "Implementation in src/ must follow strong engineering standards"
+    ]
+  },
+  "taste": {
+    "principles": [
+      "Prefer the smallest sharp idea",
+      "Reject kitchen-sink proposals",
+      "One item should test one mechanism",
+      "Complexity must earn its keep",
+      "Negative evidence should kill weak ideas"
+    ],
+    "hardRules": [
+      "If the mechanism cannot be explained crisply in 1-2 sentences, reject or simplify it",
+      "If an item introduces multiple new moving parts without clean necessity evidence, reject it",
+      "If gains mainly come from brute-force scaling when scaling is constrained, reject it"
+    ]
+  },
+  "officialResult": {
+    "baselineScore": 71.4,
+    "currentBestScore": 72.1,
+    "currentBestItemId": "RI-000",
+    "constraintsSatisfied": true,
+    "notes": "Current best comes from verifier reranking with tuned temperature."
+  },
+  "userStories": [
+    {
+      "id": "RI-001",
+      "stage": "benchmark_overview",
+      "title": "Map the benchmark landscape and bottlenecks",
+      "hypothesis": "A careful benchmark overview will expose a narrow gap worth targeting before literature and method work begin.",
+      "deliverables": [
+        "research/overview.md"
+      ],
+      "constraints": [
+        "No code implementation beyond lightweight analysis utilities",
+        "Must identify likely bottlenecks and evaluation gotchas"
+      ],
+      "acceptanceCriteria": [
+        "Summarize baseline strengths and weaknesses",
+        "Document likely bottleneck slices or failure clusters",
+        "Record evaluation gotchas that could invalidate future results"
+      ],
+      "priority": 1,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-002",
+      "stage": "literature_review",
+      "title": "Study the most relevant prior methods deeply",
+      "hypothesis": "A targeted literature review will expose a real mechanism gap rather than a cosmetic novelty opportunity.",
+      "deliverables": [
+        "research/literature/review.md"
+      ],
+      "constraints": [
+        "Focus on the most relevant methods only",
+        "Explain why each prior method may fail on this benchmark"
+      ],
+      "acceptanceCriteria": [
+        "Document the strongest relevant prior methods",
+        "Summarize each method's mechanism and limitation",
+        "Identify at least one concrete gap worth testing"
+      ],
+      "priority": 2,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-003",
+      "stage": "idea_synthesis",
+      "title": "Write the initial idea.md",
+      "hypothesis": "A crisp idea can be stated before heavy implementation if the benchmark and literature gaps are clear enough.",
+      "deliverables": [
+        "idea.md"
+      ],
+      "constraints": [
+        "Idea must be explainable in 1-2 sentences",
+        "No kitchen-sink bundle of unrelated tricks"
+      ],
+      "acceptanceCriteria": [
+        "Write problem framing, gap, and core mechanism",
+        "Explain minimality, falsification path, and failure modes",
+        "List the smallest decisive validations"
+      ],
+      "priority": 3,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-004",
+      "stage": "early_validation",
+      "title": "Validate that the target gap is real and measurable",
+      "hypothesis": "The claimed gap is real enough to support a new method direction rather than noise or benchmark artifact.",
+      "deliverables": [
+        "research/validations/ri-004/"
+      ],
+      "constraints": [
+        "All commands, configs, and logs must be saved",
+        "Negative evidence must be recorded honestly"
+      ],
+      "acceptanceCriteria": [
+        "Run the required early validation",
+        "Save logs, metrics, and interpretation in the item folder",
+        "State whether the gap is real, weak, or invalid"
+      ],
+      "priority": 4,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-005",
+      "stage": "early_validation",
+      "title": "Test mechanism necessity and upside potential",
+      "hypothesis": "A cheap validation can show whether the proposed mechanism is necessary and whether full implementation is justified.",
+      "deliverables": [
+        "research/validations/ri-005/",
+        "idea.md"
+      ],
+      "constraints": [
+        "Save logs and interpretation",
+        "Revise idea.md if evidence weakens or sharpens the idea"
+      ],
+      "acceptanceCriteria": [
+        "Run the smallest meaningful validation for mechanism necessity",
+        "Estimate the upside potential honestly",
+        "Update idea.md to reflect the best current version"
+      ],
+      "priority": 5,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-006",
+      "stage": "implementation",
+      "title": "Implement the best validated idea in src/",
+      "hypothesis": "The current best version of idea.md is strong enough to justify industrial-grade implementation in src/.",
+      "deliverables": [
+        "src/"
+      ],
+      "constraints": [
+        "Implementation must match idea.md closely",
+        "Code quality must be production-grade"
+      ],
+      "acceptanceCriteria": [
+        "Implement the idea in src/",
+        "Use strong engineering standards and existing project patterns",
+        "Do not smuggle in unrelated new methods"
+      ],
+      "priority": 6,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-007",
+      "stage": "benchmark_tuning",
+      "title": "Integrate, tune, and push for the strongest trustworthy result",
+      "hypothesis": "Careful integration and tuning can move the implementation to the strongest trustworthy SOTA candidate.",
+      "deliverables": [
+        "research/tuning/",
+        "research_program.json"
+      ],
+      "constraints": [
+        "No metric gaming",
+        "No forbidden scaling",
+        "Record all tuning runs"
+      ],
+      "acceptanceCriteria": [
+        "Run benchmark integration and tuning",
+        "Log configs and outcomes under research/tuning/",
+        "Update officialResult only for verified new best results"
+      ],
+      "priority": 7,
+      "status": "queued",
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
