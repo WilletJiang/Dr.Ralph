@@ -1,7 +1,32 @@
 {
   "project": "MathReasoningLab",
-  "branchName": "ralph/mathbench-harness",
-  "description": "Staged harness for producing a benchmark-breaking method with explicit evidence and taste constraints.",
+  "branchName": "ralph/mathbench-idea-exploration",
+  "description": "Auto-research harness that sharpens a benchmark question into a review-ready idea before any implementation begins.",
+  "problem": {
+    "source": "user_or_agent",
+    "question": "Can we improve MathBench-v2 with a reasoning-state selection mechanism that stays fully batched and GPU-parallel instead of relying on sequential reranking?",
+    "successDefinition": [
+      "Produce a concise, elegant idea with a crisp mechanism",
+      "Keep the core computation compatible with large-scale GPU parallelism",
+      "Show early evidence that the mechanism is real, necessary, and plausibly high-upside",
+      "Respect the user's research background, resource limits, and explicit requirements"
+    ],
+    "nonGoals": [
+      "Do not auto-start implementation in src/ before user review",
+      "Do not rely on brute-force serial search or hidden ensembling",
+      "Do not settle for a narrow follow-up tweak with weak novelty"
+    ]
+  },
+  "researcherContext": {
+    "required": true,
+    "isComplete": false,
+    "intakeFile": "research/intake.md",
+    "backgroundSummary": "",
+    "requirementsSummary": "",
+    "availableResources": "",
+    "collaborationPreferences": "",
+    "lastUpdated": ""
+  },
   "benchmark": {
     "name": "MathBench-v2",
     "primaryMetric": "accuracy",
@@ -24,15 +49,39 @@
     "ideaFile": "idea.md",
     "overviewFile": "research/overview.md",
     "literatureFile": "research/literature/review.md",
-    "validationRoot": "research/validations",
+    "progressFile": "progress.txt",
+    "explorationPlanFile": "experiments/early-exploration/plan.md",
+    "explorationRoot": "experiments/early-exploration",
+    "liveLogFile": "experiments/early-exploration/live-log.md",
+    "iterationLogRoot": "experiments/early-exploration/agent-runs",
+    "reviewMemoFile": "research/final-review.md",
     "implementationTargetDir": "src",
     "tuningRoot": "research/tuning",
+    "automationBoundary": "user_review",
+    "postReviewStagesRequireUser": true,
     "rules": [
-      "Do not skip directly to implementation before enough early validation evidence exists",
-      "Every validation run must save commands, configs, logs, results, and interpretation",
-      "idea.md must be revised when evidence changes the best idea",
-      "Implementation in src/ must follow strong engineering standards"
+      "Do not auto-start implementation before the user review gate is reached and unlocked by a human",
+      "Do not start autonomous research until the user has provided research background and requirements",
+      "Every exploration run must save commands, configs, logs, results, and interpretation",
+      "idea.md must be revised whenever evidence changes the best current version of the idea",
+      "The loop must stop once the idea is professionalized and ready for user review"
     ]
+  },
+  "automation": {
+    "mode": "auto_research_only",
+    "state": "running",
+    "boundaryStage": "user_review",
+    "userIntakeRequired": true,
+    "stopWhen": [
+      "review_memo_is_ready",
+      "automation_state_becomes_awaiting_user_review",
+      "the_best_current_idea_is_killed_by_evidence"
+    ],
+    "requiresUserInterventionFor": [
+      "implementation",
+      "benchmark_tuning"
+    ],
+    "notes": "Post-review implementation and benchmark tuning are intentionally outside the autonomous loop."
   },
   "taste": {
     "principles": [
@@ -44,8 +93,9 @@
     ],
     "hardRules": [
       "If the mechanism cannot be explained crisply in 1-2 sentences, reject or simplify it",
-      "If an item introduces multiple new moving parts without clean necessity evidence, reject it",
-      "If gains mainly come from brute-force scaling when scaling is constrained, reject it"
+      "If the method does not map cleanly to large-scale GPU parallel execution, reject or reformulate it",
+      "If the novelty is only a narrow follow-up tweak without a qualitatively new mechanism, reject it",
+      "If the idea would not clear an honest top-conference oral bar, sharpen it or kill it"
     ]
   },
   "officialResult": {
@@ -58,159 +108,240 @@
   "userStories": [
     {
       "id": "RI-001",
-      "stage": "benchmark_overview",
-      "title": "Map the benchmark landscape and bottlenecks",
-      "hypothesis": "A careful benchmark overview will expose a narrow gap worth targeting before literature and method work begin.",
+      "stage": "problem_framing",
+      "title": "Lock the exact research question and win condition",
+      "hypothesis": "A sharper problem framing prevents the loop from wandering into metric gaming or low-upside novelty.",
       "deliverables": [
-        "research/overview.md"
+        "research/overview.md",
+        "research_program.json"
       ],
       "constraints": [
-        "No code implementation beyond lightweight analysis utilities",
-        "Must identify likely bottlenecks and evaluation gotchas"
+        "Question may originate from the user or the agent, but it must be explicit",
+        "Success conditions must be falsifiable and implementation-free at this stage"
       ],
       "acceptanceCriteria": [
-        "Summarize baseline strengths and weaknesses",
-        "Document likely bottleneck slices or failure clusters",
-        "Record evaluation gotchas that could invalidate future results"
+        "Write the exact question, non-goals, and win condition",
+        "Record the benchmark box and research constraints clearly",
+        "Remove any ambiguity about what counts as success versus noise"
       ],
       "priority": 1,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": false,
       "notes": ""
     },
     {
       "id": "RI-002",
+      "stage": "benchmark_overview",
+      "title": "Map the benchmark landscape and bottlenecks",
+      "hypothesis": "A careful benchmark overview will expose a narrow gap worth targeting before method design begins.",
+      "deliverables": [
+        "research/overview.md"
+      ],
+      "constraints": [
+        "No method proposal beyond bottleneck hypotheses",
+        "Must identify evaluation gotchas and scaling-relevant constraints"
+      ],
+      "acceptanceCriteria": [
+        "Summarize baseline strengths and weaknesses",
+        "Document likely bottleneck slices or failure clusters",
+        "Record benchmark rules that would invalidate a fake win"
+      ],
+      "priority": 2,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-003",
       "stage": "literature_review",
-      "title": "Study the most relevant prior methods deeply",
-      "hypothesis": "A targeted literature review will expose a real mechanism gap rather than a cosmetic novelty opportunity.",
+      "title": "Study the most relevant modern methods deeply",
+      "hypothesis": "A targeted literature review will separate real mechanism gaps from cosmetic novelty opportunities.",
       "deliverables": [
         "research/literature/review.md"
       ],
       "constraints": [
-        "Focus on the most relevant methods only",
-        "Explain why each prior method may fail on this benchmark"
+        "Focus on the strongest relevant methods only",
+        "Explain why each method may fail on this benchmark or under these systems constraints"
       ],
       "acceptanceCriteria": [
         "Document the strongest relevant prior methods",
         "Summarize each method's mechanism and limitation",
         "Identify at least one concrete gap worth testing"
       ],
-      "priority": 2,
-      "status": "queued",
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "RI-003",
-      "stage": "idea_synthesis",
-      "title": "Write the initial idea.md",
-      "hypothesis": "A crisp idea can be stated before heavy implementation if the benchmark and literature gaps are clear enough.",
-      "deliverables": [
-        "idea.md"
-      ],
-      "constraints": [
-        "Idea must be explainable in 1-2 sentences",
-        "No kitchen-sink bundle of unrelated tricks"
-      ],
-      "acceptanceCriteria": [
-        "Write problem framing, gap, and core mechanism",
-        "Explain minimality, falsification path, and failure modes",
-        "List the smallest decisive validations"
-      ],
       "priority": 3,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": false,
       "notes": ""
     },
     {
       "id": "RI-004",
-      "stage": "early_validation",
-      "title": "Validate that the target gap is real and measurable",
-      "hypothesis": "The claimed gap is real enough to support a new method direction rather than noise or benchmark artifact.",
+      "stage": "idea_proposal",
+      "title": "Write the first full idea.md",
+      "hypothesis": "A strong initial idea can be stated before heavy experimentation if the problem and gap are sharp enough.",
       "deliverables": [
-        "research/validations/ri-004/"
+        "idea.md"
       ],
       "constraints": [
-        "All commands, configs, and logs must be saved",
-        "Negative evidence must be recorded honestly"
+        "The idea must be concise, elegant, and mechanistically crisp",
+        "The idea must support large-scale GPU parallel computation",
+        "The idea must not merely be a narrow follow-up patch"
       ],
       "acceptanceCriteria": [
-        "Run the required early validation",
-        "Save logs, metrics, and interpretation in the item folder",
-        "State whether the gap is real, weak, or invalid"
+        "State the mechanism in 1-2 sentences",
+        "Explain the novelty, parallel fit, falsification path, and oral-level claim honestly",
+        "List the smallest decisive experiments"
       ],
       "priority": 4,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": false,
       "notes": ""
     },
     {
       "id": "RI-005",
-      "stage": "early_validation",
-      "title": "Test mechanism necessity and upside potential",
-      "hypothesis": "A cheap validation can show whether the proposed mechanism is necessary and whether full implementation is justified.",
+      "stage": "validation_plan",
+      "title": "Design the decisive early-exploration plan",
+      "hypothesis": "A comprehensive but minimal validation plan can determine whether the idea deserves to survive.",
       "deliverables": [
-        "research/validations/ri-005/",
-        "idea.md"
+        "experiments/early-exploration/plan.md",
+        "experiments/early-exploration/live-log.md"
       ],
       "constraints": [
-        "Save logs and interpretation",
-        "Revise idea.md if evidence weakens or sharpens the idea"
+        "Plan the smallest set of decisive tests, not an unfocused sweep",
+        "Explicitly define kill criteria and stop conditions"
       ],
       "acceptanceCriteria": [
-        "Run the smallest meaningful validation for mechanism necessity",
-        "Estimate the upside potential honestly",
-        "Update idea.md to reflect the best current version"
+        "Write the experiment plan, required artifacts, and decision thresholds",
+        "Define what will be run in parallel versus sequentially",
+        "Record what evidence would kill, revise, or promote the idea"
       ],
       "priority": 5,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": false,
       "notes": ""
     },
     {
       "id": "RI-006",
-      "stage": "implementation",
-      "title": "Implement the best validated idea in src/",
-      "hypothesis": "The current best version of idea.md is strong enough to justify industrial-grade implementation in src/.",
+      "stage": "early_exploration",
+      "title": "Execute the early-exploration plan under experiments/early-exploration",
+      "hypothesis": "Small, decisive experiments can show whether the mechanism is real, necessary, and large enough to justify continued belief.",
       "deliverables": [
-        "src/"
+        "experiments/early-exploration/ri-006/",
+        "experiments/early-exploration/live-log.md",
+        "idea.md"
       ],
       "constraints": [
-        "Implementation must match idea.md closely",
-        "Code quality must be production-grade"
+        "All commands, configs, logs, and interpretations must be saved",
+        "Problems discovered during exploration must trigger explicit reasoning and refinement"
       ],
       "acceptanceCriteria": [
-        "Implement the idea in src/",
-        "Use strong engineering standards and existing project patterns",
-        "Do not smuggle in unrelated new methods"
+        "Run the planned decisive experiments",
+        "Save raw evidence and a readable summary under the exploration root",
+        "Update idea.md as evidence sharpens or weakens the mechanism"
       ],
       "priority": 6,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": false,
       "notes": ""
     },
     {
       "id": "RI-007",
+      "stage": "idea_convergence",
+      "title": "Stop exploration and professionalize the final idea package",
+      "hypothesis": "Once the major unknowns are resolved, the best contribution is to converge the idea cleanly instead of continuing to explore.",
+      "deliverables": [
+        "idea.md",
+        "research/final-review.md"
+      ],
+      "constraints": [
+        "Do not leave loose experimental threads open without naming them",
+        "Rewrite the idea in a professional, publication-ready style"
+      ],
+      "acceptanceCriteria": [
+        "State the final best idea crisply and professionally",
+        "Summarize the decisive evidence, revisions, and remaining risks",
+        "Explicitly stop autonomous exploration once convergence is reached"
+      ],
+      "priority": 7,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-008",
+      "stage": "user_review",
+      "title": "Hand the converged idea package to the user for review",
+      "hypothesis": "A human review gate after idea convergence prevents the autonomous loop from drifting into implementation without approval.",
+      "deliverables": [
+        "research/final-review.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "The loop must stop here and wait for human input",
+        "No automatic post-review work may begin"
+      ],
+      "acceptanceCriteria": [
+        "Set automation.state to awaiting_user_review",
+        "Point the user to the final review memo and idea.md",
+        "Leave a clear next-step suggestion for the human reviewer"
+      ],
+      "priority": 8,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "RI-009",
+      "stage": "implementation",
+      "title": "Implement the reviewed idea in src/",
+      "hypothesis": "Only a reviewed and approved idea should move into code.",
+      "deliverables": [
+        "src/"
+      ],
+      "constraints": [
+        "This stage is outside the autonomous loop",
+        "Requires explicit user approval after review"
+      ],
+      "acceptanceCriteria": [
+        "Human reviewer unlocks the stage",
+        "Implementation matches the approved idea.md",
+        "No unrelated new methods are smuggled in"
+      ],
+      "priority": 9,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": true,
+      "notes": ""
+    },
+    {
+      "id": "RI-010",
       "stage": "benchmark_tuning",
-      "title": "Integrate, tune, and push for the strongest trustworthy result",
-      "hypothesis": "Careful integration and tuning can move the implementation to the strongest trustworthy SOTA candidate.",
+      "title": "Integrate and tune only after reviewed implementation exists",
+      "hypothesis": "Tuning should happen only after the human approves both the idea and the implementation path.",
       "deliverables": [
         "research/tuning/",
         "research_program.json"
       ],
       "constraints": [
-        "No metric gaming",
-        "No forbidden scaling",
-        "Record all tuning runs"
+        "This stage is outside the autonomous loop",
+        "No metric gaming or hidden scaling"
       ],
       "acceptanceCriteria": [
-        "Run benchmark integration and tuning",
-        "Log configs and outcomes under research/tuning/",
-        "Update officialResult only for verified new best results"
+        "Human reviewer unlocks the stage",
+        "Log all tuning runs and update officialResult only for verified wins",
+        "Preserve benchmark rules and trustworthiness"
       ],
-      "priority": 7,
+      "priority": 10,
       "status": "queued",
       "passes": false,
+      "requiresUserIntervention": true,
       "notes": ""
     }
   ]

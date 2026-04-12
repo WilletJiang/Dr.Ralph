@@ -1,41 +1,57 @@
 # Idea
 
-## Problem Framing
+## Researcher Context
+
+What parts of the user's background, resources, and hard requirements most constrain this idea?
+
+## Research Question
 
 What exact benchmark problem are we trying to solve?
 
-## Real Gap
+## Objective And Win Condition
 
-What concrete gap do current methods leave open?
+What evidence would make this idea strong enough to hand to a human reviewer?
 
-## Core Mechanism
+## Core Claim
 
 Explain the idea in 1-2 crisp sentences.
 
-## Why This Is Minimal
+## Why This Could Matter
 
-Why is this the smallest version of the idea that could plausibly matter?
+What is qualitatively new here, and why is it not merely a narrow follow-up tweak?
+
+## Requirement Fit
+
+How does this idea satisfy the user's explicit research requirements and stop conditions?
+
+## GPU-Parallel Fit
+
+How does the core computation map cleanly to large-scale batched or distributed GPU execution?
+
+## Minimal Mechanism
+
+What is the smallest version of the idea that could plausibly matter?
 
 ## Why Existing Methods Are Insufficient
 
 What do the closest methods do, and why do they fail here?
 
-## What Would Falsify It
+## Falsification Conditions
 
-What result would make us give up or sharply revise this idea?
+What result would make us kill or sharply revise this idea?
 
 ## Expected Failure Modes
 
 How is this idea most likely to fail?
 
-## Complexity Budget
+## Early Exploration Plan
 
-What extra complexity does this idea introduce, and why is it justified?
+What are the smallest decisive experiments, and what does each one test?
 
-## Minimum Validation Plan
+## Evidence-Driven Revisions
 
-What are the smallest decisive experiments?
+Keep this updated as exploration sharpens, simplifies, or kills the idea.
 
-## Best Current Version
+## Final Professionalized Version
 
-Keep this updated as evidence changes the idea.
+When the loop converges, rewrite the final clean method statement here.

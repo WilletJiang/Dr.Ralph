@@ -1,8 +1,8 @@
 # Ralph
 
-Ralph is a fresh-context agent loop for benchmark research. You give it a benchmark, a baseline, a set of constraints, and a staged harness. It then advances the work one step at a time: understanding the benchmark, reading the literature, writing and revising `idea.md`, running early validations, implementing the best validated idea in `src/`, and finally integrating and tuning against the benchmark.
+Ralph is a fresh-context agent loop for benchmark research, but the autonomous boundary is intentionally narrow. It starts by requiring the user to provide research background and explicit requirements, then takes the project from question framing through benchmark grounding, literature review, initial idea formation, validation planning, and early exploration, and finally stops once `idea.md` and the review memo are strong enough for a human to inspect.
 
-The point is not to let the agent wander. The point is to make it much harder for the agent to do the usual low-taste things: skip the benchmark analysis, fake novelty, build a kitchen sink, overfit the metric, or jump into full implementation before the idea deserves to survive.
+The point is not to let the agent wander into implementation theater. The point is to force a higher-taste loop: sharpen the question, propose an idea that is concise and modern, test it early under real constraints, professionalize the writeup, and pause before `src/` or benchmark tuning work begins.
 
 ## Quickstart
 
@@ -15,50 +15,80 @@ cp /path/to/ralph/CLAUDE.md scripts/ralph/CLAUDE.md
 cp /path/to/ralph/research_program.json.example scripts/ralph/research_program.json
 cp /path/to/ralph/idea.md .
 cp -r /path/to/ralph/research .
+cp -r /path/to/ralph/experiments .
 
+./scripts/ralph/ralph.sh --init-intake
 ./scripts/ralph/ralph.sh
 ```
 
 Use `--tool amp` or `--tool claude` if you do not want the default Codex CLI runner.
 
-## How it works
+## How It Works
 
-The main control file is `research_program.json`. It defines the benchmark box, the current trusted result, the artifact locations, the taste rules, and the queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
+The main control file is `research_program.json`. It defines the research question, researcher context, benchmark box, artifact locations, taste rules, automation boundary, and the queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
 
-The intended stage order is:
+In practice, the operator flow is:
 
-1. benchmark overview
-2. literature review
-3. `idea.md`
-4. early validation
-5. implementation
-6. benchmark tuning
+1. define the benchmark and create `research_program.json`
+2. run `./ralph.sh --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
+3. run `./ralph.sh` to let the autonomous research loop execute until the review gate
+4. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
+5. decide manually whether to unlock implementation or kill the idea
 
-Each iteration gets fresh context. Long-term memory lives in git history, `progress.txt`, `idea.md`, and the artifacts under `research/`.
+The intended autonomous stage order is:
+
+1. researcher intake
+2. problem framing
+3. benchmark overview
+4. literature review
+5. `idea.md`
+6. validation plan
+7. early exploration
+8. idea convergence
+9. user review gate
+
+Implementation in `src/` and benchmark tuning remain in the control file as post-review stages, but the autonomous loop must not start them on its own.
+
+Each iteration gets fresh context. Long-term memory lives in git history, the configured progress log, `idea.md`, `research/final-review.md`, and the artifacts under `research/` and `experiments/early-exploration/`.
 
 ## Taste
 
-Ralph has a fairly opinionated view of research taste. It prefers the smallest sharp idea that could matter. It rejects kitchen-sink proposals. One item should test one mechanism. Complexity has to earn its keep. Negative evidence should kill weak ideas instead of triggering more rescue complexity.
+Ralph prefers the smallest sharp idea that could matter. It rejects kitchen-sink proposals. One item should test one mechanism. Complexity has to earn its keep. Negative evidence should kill weak ideas instead of triggering rescue complexity.
 
-Those are not just vibes in the README. They are encoded into the prompts and the harness schema as promotion and rejection rules.
+There are additional hard filters now:
+- the idea must stay compatible with large-scale GPU parallel execution
+- the mechanism must be explainable crisply
+- narrow follow-up work is not enough
+- the novelty bar should be high enough to be discussable at top-conference oral level
+
+Those are not just README vibes. They are encoded into the prompt templates and the example control schema.
 
 ## Files
 
-`ralph.sh` is the runner. `research_program.json` is the control file. `idea.md` is the best current version of the method. `progress.txt` is the append-only ledger. `research/` holds the benchmark overview, literature notes, validation artifacts, and tuning logs. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
+`ralph.sh` is the runner. `research_program.json` is the control file. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the benchmark overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
+
+Before the loop can start, run the harness with `--init-intake` or fill [research/intake.md](research/intake.md) and mark `researcherContext.isComplete=true` in the control file. Ralph treats that intake as hard context, not optional prose.
+
+The intake asks for:
+- research background and current agenda
+- hard requirements and evaluation bar
+- available resources and constraints
+- collaboration boundary and escalation preferences
 
 `prd.json` is still supported as a legacy fallback, but `research_program.json` is the canonical name now.
 
-## Validation
+## Early Exploration
 
-Early validations live under `research/validations/`. Each validation should save the commands, configs, logs, results, and short interpretation. The question is not only whether the score moved. The question is whether the idea deserves to stay alive.
+Early exploration lives under `experiments/early-exploration/`. The plan should define the smallest decisive experiments. Each run should save commands, configs, raw logs, result summaries, and interpretation. `live-log.md` should capture the running research narrative as the agent discovers problems and responds to them.
 
-Once the idea is strong enough, Ralph implements it in `src/`. The implementation should track `idea.md` closely, stay minimal, and avoid sneaking in extra unvalidated tricks.
+When the major unknowns are resolved, the loop should stop exploring, rewrite `idea.md` professionally, write `research/final-review.md`, set `automation.state` to `awaiting_user_review`, and halt.
 
 ## Notes
 
 ```bash
-jq '.benchmark, .officialResult, .userStories[] | {id, stage, title, status, passes}' research_program.json
+jq '.researcherContext, .problem, .automation, .userStories[] | {id, stage, status, passes, requiresUserIntervention}' research_program.json
 cat progress.txt
+find experiments/early-exploration -maxdepth 2 -type f | sort
 git log --oneline -10
 ```
 

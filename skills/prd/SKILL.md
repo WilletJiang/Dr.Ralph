@@ -11,51 +11,74 @@ This skill keeps the old `/prd` name, but its purpose is to draft a research har
 ## The Job
 
 Generate a brief that defines:
+- the research question
+- the researcher's background and hard requirements
 - the benchmark
 - the baseline / official best
 - the allowed search space
 - the forbidden moves
-- the staged harness
+- the staged autonomous harness
+- the post-review manual stages
 - the candidate research items
 
 ## Required Sections
 
-### 1. Benchmark Box
+### 1. Research Question
+- who proposed the question
+- exact problem statement
+- success definition
+- non-goals
+
+### 2. Researcher Context
+- research background
+- hard requirements
+- available resources
+- collaboration boundary
+### 3. Benchmark Box
 - benchmark name
 - split
 - primary metric
 - secondary constraints
 
-### 2. Baseline
+### 4. Baseline
 - current baseline
 - current best official result
 - what that method is doing
 
-### 3. Taste / Complexity Rules
+### 5. Taste / Complexity Rules
 - what counts as a clean idea
 - what counts as unjustified complexity
 - what should be rejected immediately
+- what makes the idea strong enough to merit human review
 
-### 4. Harness Stages
+### 6. Harness Stages
+- researcher intake
+- problem framing
 - benchmark overview
 - literature review
 - `idea.md`
-- early validation
+- validation plan
+- early exploration
+- idea convergence
+- user review gate
 - implementation
 - tuning
 
-### 5. Candidate Research Items
+### 7. Candidate Research Items
 
 Each item should specify:
 - stage
 - hypothesis
 - deliverables
 - acceptance criteria
+- whether it requires user intervention
 
 ## Writing Rules
 
 - Keep the brief narrow.
 - Do not allow the agent to jump straight to implementation.
+- Require user intake before autonomous work starts.
 - Make `idea.md` explicit.
-- Make validation artifacts explicit.
+- Make early-exploration artifacts explicit under `experiments/early-exploration/`.
 - Treat negative evidence as a first-class outcome.
+- Insert an explicit user-review stop before implementation or tuning.

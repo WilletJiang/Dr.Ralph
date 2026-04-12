@@ -1,13 +1,11 @@
-# Early Validations
+# Legacy Early Validations
 
-Create one folder per validation item, for example:
+This directory is kept for backward compatibility with older Ralph programs.
 
-- `ri-004/`
-- `ri-005/`
+New autonomous research work should write validation plans, live logs, run artifacts, and iteration transcripts under:
 
-Each folder should contain:
-- commands run
-- configs used
-- raw logs
-- result summary
-- interpretation
+- `experiments/early-exploration/`
+
+If you are migrating an older project, either:
+- leave existing validation folders here as historical evidence, or
+- copy them into `experiments/early-exploration/` and update `research_program.json`.

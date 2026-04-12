@@ -36,18 +36,18 @@ const phaseColors: Record<Phase, { bg: string; border: string }> = {
 
 const allSteps: { id: string; label: string; description: string; phase: Phase }[] = [
   // Setup phase (vertical)
-  { id: '1', label: 'You define a benchmark', description: 'Lock the problem, metric, and constraints', phase: 'setup' },
-  { id: '2', label: 'Build research_program.json', description: 'Benchmark, literature, idea, validation, implementation, tuning', phase: 'setup' },
-  { id: '3', label: 'Run ralph.sh', description: 'Starts the Codex/Amp/Claude loop', phase: 'setup' },
+  { id: '1', label: 'User fills research intake', description: 'Background, requirements, resources, and stop rules', phase: 'setup' },
+  { id: '2', label: 'Build research_program.json', description: 'Question, context, idea, exploration, and review gate', phase: 'setup' },
+  { id: '3', label: 'Run ralph.sh', description: 'Starts the Codex/Amp/Claude loop after intake passes', phase: 'setup' },
   // Loop phase
   { id: '4', label: 'AI picks a harness step', description: 'Finds the next queued stage item', phase: 'loop' },
-  { id: '5', label: 'Produces the stage artifact', description: 'Overview, literature, idea, validation, src, or tuning', phase: 'loop' },
+  { id: '5', label: 'Produces the stage artifact', description: 'Overview, literature, idea, plan, or exploration run', phase: 'loop' },
   { id: '6', label: 'Promotes or rejects it', description: 'Only if evidence and constraints both pass', phase: 'loop' },
-  { id: '7', label: 'Updates research_program.json', description: 'Writes status and official result', phase: 'loop' },
-  { id: '8', label: 'Logs to progress.txt', description: 'Records evidence, idea changes, and next move', phase: 'loop' },
-  { id: '9', label: 'More queued items?', description: '', phase: 'decision' },
+  { id: '7', label: 'Updates research_program.json', description: 'Writes item status and automation state', phase: 'loop' },
+  { id: '8', label: 'Logs the evidence trail', description: 'Progress log, live log, and run transcripts', phase: 'loop' },
+  { id: '9', label: 'Reached review gate?', description: '', phase: 'decision' },
   // Exit
-  { id: '10', label: 'Done!', description: 'Target reached or queue exhausted', phase: 'done' },
+  { id: '10', label: 'Pause for user review', description: 'Auto research stops before implementation', phase: 'done' },
 ];
 
 const notes = [
@@ -56,13 +56,10 @@ const notes = [
     appearsWithStep: 2,
     position: { x: 340, y: 100 },
     color: { bg: '#f5f0ff', border: '#8b5cf6' },
-    content: `{
-  "id": "RI-001",
-  "stage": "idea_synthesis",
-  "title": "Write initial idea.md",
-  "deliverables": ["idea.md"],
-  "status": "queued",
-  "passes": false
+    content: `researcherContext = {
+  required: true,
+  isComplete: true,
+  intakeFile: "research/intake.md"
 }`,
   },
   {
@@ -70,10 +67,10 @@ const notes = [
     appearsWithStep: 8,
     position: { x: 480, y: 620 },
     color: { bg: '#fdf4f0', border: '#c97a50' },
-    content: `Validations live in their own
-folders with logs, results, and
-interpretation. idea.md evolves
-as evidence sharpens the method.`,
+    content: `Early exploration lives in
+experiments/early-exploration/
+with a plan, live log, raw runs,
+and a final review handoff.`,
   },
 ];
 
