@@ -7,14 +7,16 @@ The point is not to let the agent wander into implementation theater. The point 
 ## Quickstart
 
 ```bash
-./bootstrap-ralph.sh /path/to/your/project
+./install-global-commands.sh
+ralph-bootstrap /path/to/your/project
 cd /path/to/your/project
-./scripts/ralph/ralph.sh --init-intake
-./scripts/ralph/ralph.sh
+ralph --init-intake
+ralph
 ```
 
 Use `--tool amp` or `--tool claude` if you do not want the default Codex CLI runner.
-Use `--force` with `bootstrap-ralph.sh` if you intentionally want to replace an existing Ralph setup.
+Use `--force` with `ralph-bootstrap` if you intentionally want to replace an existing Ralph setup.
+If `~/.local/bin` is not already on your `PATH`, run the export command printed by `install-global-commands.sh`.
 
 ## How It Works
 
@@ -23,8 +25,8 @@ The main control file is `research_program.json`. It defines the research questi
 In practice, the operator flow is:
 
 1. bootstrap Ralph into a project directory and create `scripts/ralph/research_program.json`
-2. run `./scripts/ralph/ralph.sh --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
-3. run `./scripts/ralph/ralph.sh` to let the autonomous research loop execute until the review gate
+2. run `ralph --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
+3. run `ralph` to let the autonomous research loop execute until the review gate
 4. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
 5. decide manually whether to unlock implementation or kill the idea
 
@@ -58,7 +60,7 @@ Those are not just README vibes. They are encoded into the prompt templates and 
 
 ## Files
 
-`bootstrap-ralph.sh` installs Ralph into a target project. `ralph.sh` is the runner. `research_program.json` is the control file. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the benchmark overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
+`install-global-commands.sh` installs the global `ralph-bootstrap` and `ralph` commands. `ralph-bootstrap` installs Ralph into a target project. `ralph.sh` is the project-local runner behind the global `ralph` wrapper. `research_program.json` is the control file. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the benchmark overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
 
 Before the loop can start, run the harness with `--init-intake` or fill [research/intake.md](research/intake.md) and mark `researcherContext.isComplete=true` in the control file. Ralph treats that intake as hard context, not optional prose.
 

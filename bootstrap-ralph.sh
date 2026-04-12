@@ -1,8 +1,19 @@
 #!/bin/bash
 # Bootstrap Ralph into a target project directory.
-# Usage: ./bootstrap-ralph.sh /path/to/project [--force]
+# Usage: bootstrap-ralph.sh /path/to/project [--force]
 
 set -euo pipefail
+
+resolve_script_path() {
+  local source_path="${BASH_SOURCE[0]}"
+  while [ -L "$source_path" ]; do
+    local source_dir
+    source_dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" != /* ]] && source_path="$source_dir/$source_path"
+  done
+  cd -P "$(dirname "$source_path")" && pwd
+}
 
 FORCE=false
 TARGET_DIR=""
@@ -42,7 +53,7 @@ if [[ -z "$TARGET_DIR" ]]; then
   exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(resolve_script_path)"
 
 if [[ -e "$TARGET_DIR" && ! -d "$TARGET_DIR" ]]; then
   echo "Error: target path exists but is not a directory."

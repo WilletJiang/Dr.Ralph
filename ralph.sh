@@ -37,11 +37,18 @@ if [[ "$TOOL" != "codex" && "$TOOL" != "amp" && "$TOOL" != "claude" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
 RESEARCH_PROGRAM_FILE="$SCRIPT_DIR/research_program.json"
 LEGACY_PRD_FILE="$SCRIPT_DIR/prd.json"
 CONTROL_FILE="$RESEARCH_PROGRAM_FILE"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
+
+# When Ralph is installed into project/scripts/ralph, treat the project root
+# as the base for research artifacts like idea.md, research/, and experiments/.
+if [ "$(basename "$SCRIPT_DIR")" = "ralph" ] && [ "$(basename "$(dirname "$SCRIPT_DIR")")" = "scripts" ]; then
+  PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+fi
 
 if [ -f "$RESEARCH_PROGRAM_FILE" ]; then
   CONTROL_FILE="$RESEARCH_PROGRAM_FILE"
@@ -67,7 +74,7 @@ resolve_path() {
       printf '%s\n' "$path"
       ;;
     *)
-      printf '%s\n' "$SCRIPT_DIR/$path"
+      printf '%s\n' "$PROJECT_ROOT/$path"
       ;;
   esac
 }
@@ -148,7 +155,9 @@ update_researcher_context() {
   local tmp_file
 
   if [[ "$INTAKE_FILE" == "$SCRIPT_DIR/"* ]]; then
-    intake_path_for_json="${INTAKE_FILE#$SCRIPT_DIR/}"
+    intake_path_for_json="${INTAKE_FILE#$PROJECT_ROOT/}"
+  elif [[ "$INTAKE_FILE" == "$PROJECT_ROOT/"* ]]; then
+    intake_path_for_json="${INTAKE_FILE#$PROJECT_ROOT/}"
   else
     intake_path_for_json="$INTAKE_FILE"
   fi

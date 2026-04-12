@@ -1,0 +1,31 @@
+#!/bin/bash
+# Run Ralph from anywhere inside a bootstrapped project.
+
+set -euo pipefail
+
+find_project_runner() {
+  local current_dir="$PWD"
+
+  while true; do
+    if [ -x "$current_dir/scripts/ralph/ralph.sh" ]; then
+      printf '%s\n' "$current_dir/scripts/ralph/ralph.sh"
+      return 0
+    fi
+
+    if [ "$current_dir" = "/" ]; then
+      return 1
+    fi
+
+    current_dir="$(dirname "$current_dir")"
+  done
+}
+
+RUNNER_PATH="$(find_project_runner || true)"
+
+if [ -z "$RUNNER_PATH" ]; then
+  echo "Error: could not find scripts/ralph/ralph.sh in the current directory or any parent."
+  echo "Run 'ralph-bootstrap /path/to/project' first, then invoke 'ralph' from inside that project."
+  exit 1
+fi
+
+exec "$RUNNER_PATH" "$@"
