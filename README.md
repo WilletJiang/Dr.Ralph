@@ -92,16 +92,6 @@ find experiments/early-exploration -maxdepth 2 -type f | sort
 git log --oneline -10
 ```
 
-The flowchart source is in `flowchart/`:
-
-```bash
-cd flowchart
-npm install
-npm run dev
-```
-
 ## References
 
-- [karpathy/micrograd](https://github.com/karpathy/micrograd)
-- [karpathy/minGPT](https://github.com/karpathy/minGPT)
 - [Geoffrey Huntley's Ralph article](https://ghuntley.com/ralph/)
