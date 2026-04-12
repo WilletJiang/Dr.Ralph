@@ -7,21 +7,14 @@ The point is not to let the agent wander into implementation theater. The point 
 ## Quickstart
 
 ```bash
-mkdir -p scripts/ralph
-cp /path/to/ralph/ralph.sh scripts/ralph/
-cp /path/to/ralph/CODEX.md scripts/ralph/CODEX.md
-cp /path/to/ralph/prompt.md scripts/ralph/prompt.md
-cp /path/to/ralph/CLAUDE.md scripts/ralph/CLAUDE.md
-cp /path/to/ralph/research_program.json.example scripts/ralph/research_program.json
-cp /path/to/ralph/idea.md .
-cp -r /path/to/ralph/research .
-cp -r /path/to/ralph/experiments .
-
+./bootstrap-ralph.sh /path/to/your/project
+cd /path/to/your/project
 ./scripts/ralph/ralph.sh --init-intake
 ./scripts/ralph/ralph.sh
 ```
 
 Use `--tool amp` or `--tool claude` if you do not want the default Codex CLI runner.
+Use `--force` with `bootstrap-ralph.sh` if you intentionally want to replace an existing Ralph setup.
 
 ## How It Works
 
@@ -29,9 +22,9 @@ The main control file is `research_program.json`. It defines the research questi
 
 In practice, the operator flow is:
 
-1. define the benchmark and create `research_program.json`
-2. run `./ralph.sh --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
-3. run `./ralph.sh` to let the autonomous research loop execute until the review gate
+1. bootstrap Ralph into a project directory and create `scripts/ralph/research_program.json`
+2. run `./scripts/ralph/ralph.sh --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
+3. run `./scripts/ralph/ralph.sh` to let the autonomous research loop execute until the review gate
 4. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
 5. decide manually whether to unlock implementation or kill the idea
 
@@ -65,7 +58,7 @@ Those are not just README vibes. They are encoded into the prompt templates and 
 
 ## Files
 
-`ralph.sh` is the runner. `research_program.json` is the control file. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the benchmark overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
+`bootstrap-ralph.sh` installs Ralph into a target project. `ralph.sh` is the runner. `research_program.json` is the control file. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the benchmark overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the tool-specific prompt templates.
 
 Before the loop can start, run the harness with `--init-intake` or fill [research/intake.md](research/intake.md) and mark `researcherContext.isComplete=true` in the control file. Ralph treats that intake as hard context, not optional prose.
 
