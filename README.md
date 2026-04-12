@@ -7,6 +7,8 @@ The point is not to let the agent wander into implementation theater. The point 
 ## Quickstart
 
 ```bash
+git clone git@github.com:WilletJiang/Dr.Ralph.git
+cd Dr.Ralph
 ./install-global-commands.sh
 ralph-bootstrap /path/to/your/project
 cd /path/to/your/project
@@ -15,6 +17,7 @@ ralph
 ```
 
 Use `--tool amp` or `--tool claude` if you do not want the default Codex CLI runner.
+The default Codex model is `gpt5.4-xhigh`.
 Use `--force` with `ralph-bootstrap` if you intentionally want to replace an existing Ralph setup.
 If `~/.local/bin` is not already on your `PATH`, run the export command printed by `install-global-commands.sh`.
 
@@ -24,11 +27,12 @@ The main control file is `research_program.json`. It defines the research questi
 
 In practice, the operator flow is:
 
-1. bootstrap Ralph into a project directory and create `scripts/ralph/research_program.json`
-2. run `ralph --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
-3. run `ralph` to let the autonomous research loop execute until the review gate
-4. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
-5. decide manually whether to unlock implementation or kill the idea
+1. clone the Ralph repository, enter it, and install the global commands
+2. bootstrap Ralph into a project directory and create `scripts/ralph/research_program.json`
+3. run `ralph --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
+4. run `ralph` to let the autonomous research loop execute until the review gate
+5. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
+6. decide manually whether to unlock implementation or kill the idea
 
 The intended autonomous stage order is:
 

@@ -7,6 +7,7 @@ set -e
 TOOL="codex"
 MAX_ITERATIONS=10
 INIT_INTAKE=false
+CODEX_MODEL="gpt5.4-xhigh"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -370,7 +371,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
   case "$TOOL" in
     codex)
-      OUTPUT="$(codex exec --dangerously-bypass-approvals-and-sandbox - < "$SCRIPT_DIR/CODEX.md" 2>&1 | tee "$ITERATION_LOG_FILE" /dev/stderr)" || true
+      OUTPUT="$(codex exec --model "$CODEX_MODEL" --dangerously-bypass-approvals-and-sandbox - < "$SCRIPT_DIR/CODEX.md" 2>&1 | tee "$ITERATION_LOG_FILE" /dev/stderr)" || true
       ;;
     amp)
       OUTPUT="$(amp --dangerously-allow-all < "$SCRIPT_DIR/prompt.md" 2>&1 | tee "$ITERATION_LOG_FILE" /dev/stderr)" || true
