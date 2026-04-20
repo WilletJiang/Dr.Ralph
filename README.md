@@ -1,28 +1,8 @@
 # Ralph
 
-Ralph is a fresh-context agent loop for research, but the autonomous boundary is intentionally narrow. It scaffolds and runs two research flows:
-- `experimental_research`
-- `theoretical_research`
+Ralph is a fresh-context research harness with a deliberately narrow autonomous boundary. It helps turn a vague research direction into a reviewable idea package, then stops before implementation theater takes over. Today it supports two flows: `experimental_research` for evaluation-driven work, and `theoretical_research` for theorem- or concept-level work.
 
-The point is not to let the agent wander into implementation theater. The point is to sharpen the question, propose a concise idea, test it early under the right constraints for that mode, professionalize the writeup, and stop at a human review gate.
-
-## Requirements
-
-For all projects:
-- Node.js 20+
-- `npm`
-- `git`
-
-Additional requirements for `theoretical_research`:
-- `python3`
-- `uv`
-- network access during `ralph init`
-
-Theory-mode init is not a no-op. It writes to both the project and the user environment:
-- clones `lean4-skills` into `~/.codex/tooling/lean4-skills`
-- installs `lean-lsp-mcp` into your user tool directory (typically `~/.local/bin`)
-- writes project-local `.mcp.json`
-- writes `.ralph/tooling/lean4-env.sh`
+The intended loop is simple: define the question, collect hard constraints from the researcher, work through framing and early exploration, professionalize `idea.md` and the review memo, then hand the result back to a human. Ralph is not trying to replace judgment. It is trying to structure the part of research work that benefits from discipline and repeatability.
 
 ## Quickstart
 
@@ -36,36 +16,26 @@ ralph --init-intake
 ralph
 ```
 
-If you omit `--research-mode` in an interactive terminal, `ralph init` will prompt you to choose one.
-For non-interactive init or MCP-driven init, `researchMode` must be provided explicitly.
+If you omit `--research-mode` in an interactive terminal, `ralph init` will prompt you to choose one. In non-interactive contexts, including MCP, the mode must be passed explicitly. The default runtime backend is Codex; `--tool amp` and `--tool claude` are also supported. For Codex runs, Ralph prefers the Codex SDK backend and falls back to the local Codex CLI only if the SDK path fails.
 
-Use `--tool amp` or `--tool claude` if you do not want the default Codex backend.
-For Codex runs, Ralph prefers the Codex SDK backend and falls back to the local Codex CLI only when the SDK path fails.
-The default Codex model is `gpt5.4-xhigh`.
-Use `--force` with `ralph-bootstrap` if you intentionally want to replace an existing Ralph setup.
-If `~/.local/bin` is not already on your `PATH`, run the export command printed by `install-global-commands.sh`.
+## Install
 
-## CLI Usage
+Right now the official install path is still source-based rather than npm-published. `./install-global-commands.sh` builds the TypeScript CLI and symlinks `ralph` and `ralph-bootstrap` into `~/.local/bin`. You need Node.js 20+, `npm`, and `git`. If `~/.local/bin` is not already on your `PATH`, the installer prints the export command you need.
 
-The CLI is the primary entrypoint.
+Theory-mode init has extra requirements: `python3`, `uv`, and network access during `ralph init`. That is because theoretical projects provision Lean tooling as part of setup rather than treating it as an optional extra.
 
-Initialize a project:
+## CLI
+
+The CLI is the primary entrypoint. Most people will use four commands: `init`, `intake`, `run`, and `status`.
+
+To initialize a project, run one of:
 
 ```bash
 ralph init --research-mode experimental_research /path/to/project
 ralph init --research-mode theoretical_research /path/to/project
 ```
 
-If you run `ralph init` in a TTY without `--research-mode`, Ralph prompts you to choose one. In non-interactive contexts, the flag is required.
-
-Fill intake interactively:
-
-```bash
-cd /path/to/project
-ralph intake
-```
-
-Fill intake non-interactively:
+Once you are inside the project directory, you can fill intake interactively with `ralph intake`, or non-interactively with:
 
 ```bash
 ralph intake set \
@@ -76,56 +46,19 @@ ralph intake set \
   --extra "..."
 ```
 
-Run the research loop:
+Then start the loop with `ralph run`. A typical invocation is just `ralph run`, but you can also pass `--tool`, `--model`, and `--max-iterations`. To inspect state, use `ralph status`, `ralph doctor`, and `ralph paths`. To continue a prior session, use `ralph resume <session-id>`. If you run `ralph` with no arguments inside an initialized project, it opens a small interactive REPL with `status`, `intake`, `run`, `resume`, `show paths`, and `doctor`.
 
-```bash
-ralph run
-ralph run --tool claude
-ralph run --tool codex --model gpt5.4-xhigh --max-iterations 10
-```
+## MCP
 
-Inspect and recover state:
-
-```bash
-ralph status
-ralph status --json
-ralph doctor
-ralph paths
-ralph resume <session-id>
-```
-
-If you run `ralph` with no arguments inside an initialized project, it opens the interactive REPL with `status`, `intake`, `run`, `resume`, `show paths`, and `doctor`.
-
-## MCP Usage
-
-Ralph also exposes a stdio MCP server for agent hosts:
+Ralph also exposes a stdio MCP server:
 
 ```bash
 ralph mcp serve
 ```
 
-Available MCP tools:
-- `ralph_init`
-- `ralph_status`
-- `ralph_intake_get`
-- `ralph_intake_set`
-- `ralph_run`
-- `ralph_resume`
-- `ralph_doctor`
-- `ralph_paths`
+The MCP surface mirrors the CLI. The available tools are `ralph_init`, `ralph_status`, `ralph_intake_get`, `ralph_intake_set`, `ralph_run`, `ralph_resume`, `ralph_doctor`, and `ralph_paths`.
 
-Important MCP inputs:
-- `ralph_init`: `path`, `researchMode`, optional `force`
-- `ralph_intake_set`: `background`, `requirements`, optional `resources`, `collaboration`, `extra`, `projectRoot`
-- `ralph_run`: optional `tool`, `model`, `maxIterations`, `session`, `projectRoot`
-- `ralph_resume`: `sessionId`, optional `tool`, `model`, `maxIterations`, `projectRoot`
-
-Minimal MCP flow:
-
-1. Call `ralph_init` with `path` and `researchMode`
-2. Call `ralph_intake_set`
-3. Call `ralph_run`
-4. Poll with `ralph_status`
+A minimal MCP flow is: call `ralph_init` with `path` and `researchMode`, call `ralph_intake_set`, call `ralph_run`, then poll with `ralph_status`.
 
 Example `ralph_init` payload:
 
@@ -147,105 +80,61 @@ Example `ralph_run` payload:
 }
 ```
 
-## How It Works
-
-The main control file is `research_program.json`. It defines the `researchMode`, research question, researcher context, artifact locations, taste rules, automation boundary, and queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
-
-In practice, the operator flow is:
-
-1. clone the Ralph repository, enter it, and install the global commands
-2. bootstrap Ralph into a project directory, choosing a `researchMode`
-3. run `ralph --init-intake` and tell Ralph your background, hard requirements, resources, and stop rules
-4. run `ralph` to let the autonomous research loop execute until the review gate
-5. inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`
-6. decide manually whether to unlock any post-review work or kill the idea
-
-The autonomous stage order depends on `researchMode`:
-
-- `experimental_research`: researcher intake, problem framing, evaluation framing, literature review, idea proposal, validation plan, early exploration, idea convergence, user review
-- `theoretical_research`: researcher intake, problem framing, concept framing, literature review, statement drafting, proof strategy, Lean-backed formalization checks, idea convergence, user review
-
 ## Research Modes
 
-### `experimental_research`
+`experimental_research` is for empirical or evaluation-driven work: benchmark studies, algorithm comparisons, ablations, systems experiments, or any project where decisive evidence comes from measurements and controlled runs.
 
-Use this for empirical or evaluation-driven work: benchmark studies, algorithm comparisons, ablations, systems experiments, or any project where decisive evidence comes from measurements and controlled runs.
-
-### `theoretical_research`
-
-Use this for theorem-level or concept-level work where AI-generated reasoning needs strong verification. Ralph treats this mode as Lean-first by default:
-
-- it provisions a local `lean4_skills_plus_lsp` stack
-- it clones `cameronfreer/lean4-skills` into `~/.codex/tooling/lean4-skills`
-- it force-installs `lean-lsp-mcp`
-- it writes project-local Lean env and MCP config so the theory flow can use Lean-backed checks instead of trusting long freehand derivations
+`theoretical_research` is for theorem-level or concept-level work where AI-generated reasoning needs strong verification. Ralph treats this mode as Lean-first by default. During init it provisions a `lean4_skills_plus_lsp` stack, clones `cameronfreer/lean4-skills` into `~/.codex/tooling/lean4-skills`, force-installs `lean-lsp-mcp`, and writes project-local Lean configuration so later theory work can use Lean-backed checks instead of trusting long freehand derivations.
 
 ## Lean Integration
 
-Theoretical projects use:
+For theoretical projects, Lean is part of the normal workflow rather than an optional flourish. Ralph uses:
+
 - `lean4-skills` from [cameronfreer/lean4-skills](https://github.com/cameronfreer/lean4-skills)
 - `lean-lsp-mcp` as the required MCP sidecar
 
-This is not treated as an optional flourish. Once a theoretical project is past basic framing, the default expectation is to validate statements, search libraries, and check proof shape with the configured Lean stack.
+What `ralph init --research-mode theoretical_research` actually writes:
+- `.mcp.json` in the project root
+- `.ralph/tooling/lean4-env.sh`
+- `research_program.json.theoreticalTooling` with the resolved paths and commands
 
-What `ralph init --research-mode theoretical_research` actually does:
-- ensures `~/.codex/tooling/lean4-skills` exists
-- force-installs `lean-lsp-mcp`
-- writes `.mcp.json` in the project root
-- writes `.ralph/tooling/lean4-env.sh`
-- records the resolved paths under `research_program.json.theoreticalTooling`
+It also ensures `~/.codex/tooling/lean4-skills` exists and force-installs `lean-lsp-mcp`.
 
-What you may still need to do after init:
-- if your host reads `.mcp.json` only on startup, restart or reload the host so `lean-lsp-mcp` becomes visible
-- if you want to run Lean helper scripts manually in your shell, source the generated env file first:
+Two practical notes matter here. First, if your host only reads `.mcp.json` on startup, you may need to restart or reload it before `lean-lsp-mcp` becomes visible. Second, if you want to run Lean helper scripts directly in your shell, source the generated env file first:
 
 ```bash
 source .ralph/tooling/lean4-env.sh
 ```
 
-That file exports:
-- `LEAN4_PLUGIN_ROOT`
-- `LEAN4_SCRIPTS`
-- `LEAN4_REFS`
+That file exports `LEAN4_PLUGIN_ROOT`, `LEAN4_SCRIPTS`, and `LEAN4_REFS`.
+
+## How It Works
+
+The main control file is `research_program.json`. It defines the `researchMode`, research question, researcher context, artifact locations, taste rules, automation boundary, and queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
+
+In practice, the flow is: bootstrap the project, fill intake, run the loop, inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`, then make a human decision about whether the idea deserves anything beyond review.
+
+The autonomous stage order depends on `researchMode`. Experimental projects move through problem framing, evaluation framing, literature review, idea proposal, validation planning, early exploration, and idea convergence. Theoretical projects move through problem framing, concept framing, literature review, statement drafting, proof strategy, Lean-backed formalization checks, and then convergence.
 
 ## Taste
 
-Cross-mode taste rules:
-- prefer the smallest sharp idea
-- reject kitchen-sink proposals
-- one item should test one mechanism
-- complexity must earn its keep
-- negative evidence should kill weak ideas
-- the user's stated background and requirements are hard context
+Some taste rules are global: prefer the smallest sharp idea, reject kitchen sinks, let one item test one mechanism, make complexity earn its keep, and treat negative evidence as real evidence. The user's stated background and requirements are hard context.
 
-Mode-specific hard filters now live inside the selected scaffold and prompt instructions instead of being treated as universal law. That keeps experimental evaluation constraints hard where they belong without forcing the same worldview onto theory work.
+Mode-specific hard filters live inside the selected scaffold and prompt instructions instead of being treated as universal law. That keeps experimental evaluation constraints hard where they belong without forcing the same worldview onto theory work.
 
 ## Files
 
-`install-global-commands.sh` builds the TypeScript CLI and installs the global `ralph-bootstrap` and `ralph` commands. `ralph-bootstrap` delegates to `ralph init`. `.ralph/project.json` is the canonical project marker. `research_program.json` is the control file. `templates/` holds the mode-specific scaffold packs used by `ralph init`. `idea.md` is the best current version of the idea. `progress.txt` is the append-only ledger by default. `research/` holds the overview, literature notes, and review memo. `experiments/early-exploration/` holds the validation or exploration plan, live log, per-run artifacts, and iteration transcripts. `CODEX.md`, `prompt.md`, and `CLAUDE.md` remain the packaged prompt templates used by the backends.
+`research_program.json` is the canonical control file. `.ralph/project.json` marks the directory as a Ralph project. `templates/` contains the mode-specific scaffold packs used by `ralph init`. `idea.md` is the current best version of the idea. `research/` holds overview, literature, and final review artifacts. `experiments/early-exploration/` holds the exploration plan, live log, and per-run evidence. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the packaged prompt templates used by the backends.
 
-Theoretical projects also get:
-- `.mcp.json` for `lean-lsp-mcp`
-- `.ralph/tooling/lean4-env.sh` with the required Lean env vars
-- `research_program.json.theoreticalTooling` describing the provisioned Lean stack
+Theoretical projects also get `.mcp.json`, `.ralph/tooling/lean4-env.sh`, and `research_program.json.theoreticalTooling` as part of Lean setup.
 
-`ralph.sh` is now a deprecated compatibility layer for old shell-based workflows. The new primary entrypoint is the `ralph` CLI.
+`ralph.sh` still exists as a deprecated compatibility layer for older shell-based workflows, but the primary entrypoint is now the `ralph` CLI.
 
-Before the loop can start, run the harness with `--init-intake` or fill [research/intake.md](research/intake.md) and mark `researcherContext.isComplete=true` in the control file. Ralph treats that intake as hard context, not optional prose.
+## Intake And Exploration
 
-The intake asks for:
-- research background and current agenda
-- hard requirements and evaluation or proof bar
-- available resources and constraints
-- collaboration boundary and escalation preferences
+Before the loop can start, run the harness with `--init-intake` or fill `research/intake.md` and mark `researcherContext.isComplete=true` in the control file. Intake captures the researcher's background, hard requirements, resources, and collaboration boundary. Ralph treats that intake as hard context, not optional prose.
 
-`research_program.json` is the canonical control file. Current CLI and MCP workflows expect it directly.
-
-## Early Exploration
-
-Early exploration lives under `experiments/early-exploration/` in every mode, but the content differs:
-- experimental projects save decisive runs, configs, logs, and summaries
-- theoretical projects save statement drafts, Lean-backed checks, proof fragments, and blocker analysis
+Early exploration always lives under `experiments/early-exploration/`, but the content differs by mode. Experimental projects save decisive runs, configs, logs, and summaries. Theoretical projects save statement drafts, Lean-backed checks, proof fragments, and blocker analysis.
 
 When the major unknowns are resolved, the loop should stop exploring, rewrite `idea.md` professionally, write `research/final-review.md`, set `automation.state` to `awaiting_user_review`, and halt.
 
