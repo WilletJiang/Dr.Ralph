@@ -4,7 +4,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 import { appendSessionEvent, createSession, writeSessionState } from "./sessions.js";
-import { getArtifactPaths, getResearchMode, readControlFile, writeControlFile } from "./project.js";
+import { getArtifactPaths, readControlFile, requireResearchMode, writeControlFile } from "./project.js";
 import { IntakeAnswers, IntakeField, LocatedProject, ResearchMode, SessionState } from "./types.js";
 
 const INTAKE_QUESTIONS: Record<ResearchMode, { field: IntakeField; prompt: string }[]> = {
@@ -104,7 +104,7 @@ export async function intakeSet(
   }
 
   const control = await readControlFile(project);
-  const researchMode = getResearchMode(control);
+  const researchMode = requireResearchMode(control);
   const paths = getArtifactPaths(project, control);
   const session = await createSession(project, {
     provider: "codex",
@@ -159,7 +159,7 @@ export async function runInteractiveIntake(
   }
 
   const control = await readControlFile(project);
-  const researchMode = getResearchMode(control);
+  const researchMode = requireResearchMode(control);
   const paths = getArtifactPaths(project, control);
   const existing = ((control.researcherContext ?? {}) as Record<string, string>);
   const questions = INTAKE_QUESTIONS[researchMode];

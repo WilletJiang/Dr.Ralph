@@ -132,7 +132,7 @@ export async function startMcpServer(): Promise<void> {
   server.registerTool(
     "ralph_run",
     {
-      description: "Run or continue a Dr.Ralph research session.",
+      description: "Run Dr.Ralph research iterations with fresh backend conversations and file-driven state.",
       inputSchema: {
         tool: z.enum(["codex", "amp", "claude"]).optional(),
         model: z.string().optional(),
@@ -159,7 +159,7 @@ export async function startMcpServer(): Promise<void> {
   server.registerTool(
     "ralph_resume",
     {
-      description: "Resume a Dr.Ralph session by session id.",
+      description: "Resume a Dr.Ralph session by session id while keeping backend conversations fresh each iteration.",
       inputSchema: {
         sessionId: z.string(),
         tool: z.enum(["codex", "amp", "claude"]).optional(),

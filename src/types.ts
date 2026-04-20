@@ -1,6 +1,6 @@
 export type ToolName = "codex" | "amp" | "claude";
 
-export type ProjectLayout = "canonical" | "legacy";
+export type ProjectLayout = "canonical";
 
 export const RESEARCH_MODES = [
   "experimental_research",
@@ -8,8 +8,6 @@ export const RESEARCH_MODES = [
 ] as const;
 
 export type ResearchMode = (typeof RESEARCH_MODES)[number];
-
-export const DEFAULT_RESEARCH_MODE: ResearchMode = "experimental_research";
 
 export const THEORETICAL_TOOLING_PROFILES = [
   "lean4_skills_plus_lsp",
@@ -58,7 +56,6 @@ export interface LocatedProject {
   layout: ProjectLayout;
   controlFilePath: string;
   projectFilePath?: string;
-  legacyWarning?: string;
 }
 
 export interface ArtifactPaths {
@@ -85,7 +82,6 @@ export interface SessionState {
   controlFilePath: string;
   createdAt: string;
   updatedAt: string;
-  backendSessionId?: string;
   artifacts: ArtifactPaths;
   latestError?: string;
 }
@@ -109,7 +105,6 @@ export interface StatusResult {
   projectFound: boolean;
   projectRoot?: string;
   layout?: ProjectLayout;
-  legacyWarning?: string;
   controlFilePath?: string;
   researchMode?: ResearchMode;
   researchModeWarning?: string | null;
@@ -143,7 +138,6 @@ export interface BackendRunContext {
 }
 
 export interface BackendRunResult {
-  backendSessionId?: string;
   lifecycleState: LifecycleState;
   latestError?: string;
   finalResponse?: string;

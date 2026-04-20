@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getStatus, initProject, locateProject, readControlFile, writeControlFile } from "../src/project.js";
+import { getDoctor, getStatus, initProject, locateProject, readControlFile, writeControlFile } from "../src/project.js";
 import { RESEARCH_MODES } from "../src/types.js";
 
 const tempDirs: string[] = [];
@@ -61,22 +61,23 @@ describe("project discovery", () => {
     }
   });
 
-  it("detects legacy projects via scripts/ralph/research_program.json", async () => {
+  it("requires both canonical metadata and control file to locate a project", async () => {
     const root = await makeTempDir();
     const sourceRoot = join(root, "source");
-    const legacyRoot = join(root, "legacy");
-    const scriptsDir = join(legacyRoot, "scripts", "ralph");
+    const controlOnlyRoot = join(root, "control-only");
+    const metadataOnlyRoot = join(root, "metadata-only");
 
     await initProject(sourceRoot, false, "experimental_research");
-    await mkdir(scriptsDir, { recursive: true });
-    await copyFile(join(sourceRoot, "research_program.json"), join(scriptsDir, "research_program.json"));
+    await mkdir(controlOnlyRoot, { recursive: true });
+    await copyFile(join(sourceRoot, "research_program.json"), join(controlOnlyRoot, "research_program.json"));
+    await mkdir(join(metadataOnlyRoot, ".ralph"), { recursive: true });
+    await copyFile(join(sourceRoot, ".ralph", "project.json"), join(metadataOnlyRoot, ".ralph", "project.json"));
 
-    const project = await locateProject(legacyRoot);
-    expect(project?.layout).toBe("legacy");
-    expect(project?.controlFilePath.endsWith("scripts/ralph/research_program.json")).toBe(true);
+    expect(await locateProject(controlOnlyRoot)).toBeNull();
+    expect(await locateProject(metadataOnlyRoot)).toBeNull();
   });
 
-  it("treats projects without researchMode as legacy experimental defaults", async () => {
+  it("reports missing researchMode as a configuration problem", async () => {
     const root = await makeTempDir();
     const project = await initProject(join(root, "proj"), false, "experimental_research");
     const control = await readControlFile(project);
@@ -84,7 +85,12 @@ describe("project discovery", () => {
     await writeControlFile(project, control);
 
     const status = await getStatus(project);
-    expect(status.researchMode).toBe("experimental_research");
-    expect(status.researchModeWarning).toContain("Legacy project");
+    expect(status.researchMode).toBeUndefined();
+    expect(status.researchModeWarning).toContain("Missing required researchMode");
+
+    const doctor = await getDoctor(project);
+    const researchModeCheck = doctor.checks.find((check) => check.name === "research_mode");
+    expect(researchModeCheck?.ok).toBe(false);
+    expect(doctor.warnings).toContain(status.researchModeWarning);
   });
 });

@@ -1,6 +1,17 @@
+import { execFile } from "node:child_process";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
 import { describe, expect, it } from "vitest";
 
 import { parseResearchModeSelection, resolveInitResearchMode } from "../src/cli.js";
+
+const execFileAsync = promisify(execFile);
+
+function packageRoot(): string {
+  return fileURLToPath(new URL("../", import.meta.url));
+}
 
 describe("cli research mode helpers", () => {
   it("maps friendly research mode selections to canonical values", () => {
@@ -24,5 +35,16 @@ describe("cli research mode helpers", () => {
         prompt: async () => "theoretical_research",
       }),
     ).resolves.toBe("theoretical_research");
+  });
+
+  it("rejects the removed --init-intake alias", async () => {
+    const root = packageRoot();
+    const tsxPath = join(root, "node_modules", ".bin", "tsx");
+
+    await expect(
+      execFileAsync(tsxPath, ["src/cli-bin.ts", "--init-intake"], { cwd: root }),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("unknown option '--init-intake'"),
+    });
   });
 });

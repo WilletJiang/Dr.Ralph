@@ -4,8 +4,7 @@
   "description": "Agent-native CLI runtime for the Dr.Ralph autonomous research harness.",
   "type": "module",
   "bin": {
-    "ralph": "./bin/ralph",
-    "ralph-bootstrap": "./bin/ralph-bootstrap"
+    "ralph": "./bin/ralph"
   },
   "files": [
     "dist",
@@ -25,7 +24,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsup src/cli-bin.ts src/bootstrap-bin.ts --format esm --target node20 --out-dir dist --clean",
+    "build": "tsup src/cli-bin.ts --format esm --target node20 --out-dir dist --clean",
     "dev": "tsx src/cli.ts",
     "smoke:codex-sdk": "tsx src/smoke/codex-sdk.ts",
     "smoke:mcp": "tsx src/smoke/mcp.ts",

@@ -53,25 +53,20 @@ function threadEventToRalphEvent(
 }
 
 export class CodexBackend {
-  private readonly agent = new Codex({});
+  constructor(
+    private readonly agent = new Codex({}),
+  ) {}
 
   async runTurn(context: BackendRunContext): Promise<BackendRunResult> {
     const options = normalizeCodexThreadOptions(context);
-    const thread = context.session.backendSessionId
-      ? this.agent.resumeThread(context.session.backendSessionId, options)
-      : this.agent.startThread(options);
+    const thread = this.agent.startThread(options);
 
     const streamed = await thread.runStreamed(context.prompt);
-    let backendSessionId = context.session.backendSessionId;
     let finalResponse = "";
     let latestError: string | undefined;
 
     for await (const event of streamed.events) {
       await appendSessionEvent(context.project, threadEventToRalphEvent(context.session.sessionId, event));
-
-      if (event.type === "thread.started") {
-        backendSessionId = event.thread_id;
-      }
 
       if ((event.type === "item.updated" || event.type === "item.completed") && event.item.type === "agent_message") {
         finalResponse = event.item.text;
@@ -86,7 +81,6 @@ export class CodexBackend {
     const awaitingReview = getAutomationState(control) === "awaiting_user_review";
 
     return {
-      backendSessionId,
       lifecycleState: awaitingReview ? "awaiting_user_review" : latestError ? "failed" : "completed",
       latestError,
       finalResponse,
@@ -121,13 +115,17 @@ async function runCommand(
 }
 
 export class LocalCliBackend {
+  constructor(
+    private readonly commandRunner: typeof runCommand = runCommand,
+  ) {}
+
   async runTurn(context: BackendRunContext): Promise<BackendRunResult> {
     if (context.session.provider === "codex") {
       return this.runCodexCli(context);
     }
 
     if (context.session.provider === "claude") {
-      const result = await runCommand(
+      const result = await this.commandRunner(
         "claude",
         ["--dangerously-skip-permissions", "--print"],
         context.prompt,
@@ -146,7 +144,7 @@ export class LocalCliBackend {
       };
     }
 
-    const ampResult = await runCommand(
+    const ampResult = await this.commandRunner(
       "amp",
       ["--dangerously-allow-all"],
       context.prompt,
@@ -166,28 +164,16 @@ export class LocalCliBackend {
   }
 
   private async runCodexCli(context: BackendRunContext): Promise<BackendRunResult> {
-    const args = context.session.backendSessionId
-      ? [
-          "exec",
-          "resume",
-          context.session.backendSessionId,
-          "-",
-          "--json",
-          "--model",
-          context.session.model,
-          "--dangerously-bypass-approvals-and-sandbox",
-        ]
-      : [
-          "exec",
-          "--json",
-          "--model",
-          context.session.model,
-          "--dangerously-bypass-approvals-and-sandbox",
-          "-",
-        ];
-    const result = await runCommand("codex", args, context.prompt, context.project.rootDir);
+    const args = [
+      "exec",
+      "--json",
+      "--model",
+      context.session.model,
+      "--dangerously-bypass-approvals-and-sandbox",
+      "-",
+    ];
+    const result = await this.commandRunner("codex", args, context.prompt, context.project.rootDir);
 
-    let backendSessionId = context.session.backendSessionId;
     let finalResponse = "";
     let latestError: string | undefined;
 
@@ -199,9 +185,6 @@ export class LocalCliBackend {
       try {
         const parsed = JSON.parse(trimmed) as ThreadEvent;
         await appendSessionEvent(context.project, threadEventToRalphEvent(context.session.sessionId, parsed));
-        if (parsed.type === "thread.started") {
-          backendSessionId = parsed.thread_id;
-        }
         if ((parsed.type === "item.updated" || parsed.type === "item.completed") && parsed.item.type === "agent_message") {
           finalResponse = parsed.item.text;
         }
@@ -222,7 +205,6 @@ export class LocalCliBackend {
     const awaitingReview = getAutomationState(control) === "awaiting_user_review";
 
     return {
-      backendSessionId,
       lifecycleState:
         awaitingReview || finalResponse.includes("<promise>COMPLETE</promise>")
           ? "awaiting_user_review"
@@ -248,7 +230,6 @@ export function syncSessionFromControl(
   result: BackendRunResult,
   control: Record<string, unknown>,
 ): void {
-  context.session.backendSessionId = result.backendSessionId;
   context.session.currentStage = getCurrentStage(control);
   context.session.currentItemId = getCurrentItemId(control);
   context.session.lifecycleState = result.lifecycleState;

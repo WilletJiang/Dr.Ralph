@@ -53,7 +53,6 @@ async function main(): Promise<void> {
         {
           ok: true,
           sessionId: session.sessionId,
-          backendSessionId: result.backendSessionId ?? null,
           lifecycleState: result.lifecycleState,
           finalResponse: result.finalResponse,
         },

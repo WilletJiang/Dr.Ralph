@@ -6,12 +6,10 @@ import packageJson from "../package.json" with { type: "json" };
 import { findPackageRoot } from "./package-root.js";
 import {
   ArtifactPaths,
-  DEFAULT_RESEARCH_MODE,
   DoctorCheck,
   DoctorResult,
   LocatedProject,
   ProjectMetadata,
-  ProjectLayout,
   ResearchMode,
   RESEARCH_MODES,
   SessionState,
@@ -28,13 +26,6 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-function rootDirFromControl(controlFilePath: string, layout: ProjectLayout): string {
-  if (layout === "legacy") {
-    return dirname(dirname(dirname(controlFilePath)));
-  }
-  return dirname(controlFilePath);
-}
-
 export async function locateProject(startDir = process.cwd()): Promise<LocatedProject | null> {
   let current = startDir;
 
@@ -42,35 +33,15 @@ export async function locateProject(startDir = process.cwd()): Promise<LocatedPr
     const projectFilePath = join(current, ".ralph", "project.json");
     if (await pathExists(projectFilePath)) {
       const metadata = JSON.parse(await readFile(projectFilePath, "utf8")) as ProjectMetadata;
-      const configuredControl = join(current, metadata.controlFile || "research_program.json");
-      const controlFilePath = (await pathExists(configuredControl))
-        ? configuredControl
-        : join(current, "research_program.json");
-      return {
-        rootDir: current,
-        layout: "canonical",
-        controlFilePath,
-        projectFilePath,
-      };
-    }
-
-    const canonicalControl = join(current, "research_program.json");
-    if (await pathExists(canonicalControl)) {
-      return {
-        rootDir: current,
-        layout: "canonical",
-        controlFilePath: canonicalControl,
-      };
-    }
-
-    const legacyControl = join(current, "scripts", "ralph", "research_program.json");
-    if (await pathExists(legacyControl)) {
-      return {
-        rootDir: current,
-        layout: "legacy",
-        controlFilePath: legacyControl,
-        legacyWarning: "Legacy layout detected: control file is stored under scripts/ralph/.",
-      };
+      const controlFilePath = join(current, metadata.controlFile || "research_program.json");
+      if (await pathExists(controlFilePath)) {
+        return {
+          rootDir: current,
+          layout: "canonical",
+          controlFilePath,
+          projectFilePath,
+        };
+      }
     }
 
     const parent = dirname(current);
@@ -130,19 +101,28 @@ function parseResearchMode(value: unknown): ResearchMode | undefined {
   return RESEARCH_MODES.find((mode) => mode === value);
 }
 
-export function getResearchMode(control: Record<string, unknown>): ResearchMode {
-  return parseResearchMode(control.researchMode) ?? DEFAULT_RESEARCH_MODE;
+export function getResearchMode(control: Record<string, unknown>): ResearchMode | undefined {
+  return parseResearchMode(control.researchMode);
 }
 
 export function getResearchModeWarning(control: Record<string, unknown>): string | null {
   const raw = control.researchMode;
   if (raw === undefined) {
-    return `Legacy project: researchMode is missing, defaulting to ${DEFAULT_RESEARCH_MODE}.`;
+    return `Missing required researchMode. Expected one of: ${RESEARCH_MODES.join(", ")}.`;
   }
   if (parseResearchMode(raw)) {
     return null;
   }
-  return `Unrecognized researchMode '${String(raw)}'; defaulting to ${DEFAULT_RESEARCH_MODE}.`;
+  return `Unrecognized researchMode '${String(raw)}'. Expected one of: ${RESEARCH_MODES.join(", ")}.`;
+}
+
+export function requireResearchMode(control: Record<string, unknown>): ResearchMode {
+  const researchMode = getResearchMode(control);
+  if (researchMode) {
+    return researchMode;
+  }
+
+  throw new Error(getResearchModeWarning(control) ?? "Missing required researchMode.");
 }
 
 export function getCurrentStage(control: Record<string, unknown>): string | null {
@@ -301,14 +281,14 @@ export async function getStatus(project: LocatedProject): Promise<StatusResult> 
   const paths = getArtifactPaths(project, control);
   const automationState = getAutomationState(control);
   const researchModeWarning = getResearchModeWarning(control);
+  const researchMode = getResearchMode(control);
 
   return {
     projectFound: true,
     projectRoot: project.rootDir,
     layout: project.layout,
-    legacyWarning: project.legacyWarning,
     controlFilePath: project.controlFilePath,
-    researchMode: getResearchMode(control),
+    researchMode,
     researchModeWarning,
     intakeComplete: isIntakeComplete(control),
     automationState,
@@ -346,13 +326,10 @@ export async function getDoctor(project: LocatedProject | null): Promise<DoctorR
   const projectFileExists = await pathExists(projectFilePath);
   checks.push({
     name: "project_metadata",
-    ok: project.layout === "legacy" ? true : projectFileExists,
-    detail:
-      project.layout === "legacy"
-        ? "Legacy layout does not require .ralph/project.json"
-        : projectFileExists
-          ? `Found metadata file at ${projectFilePath}`
-          : `Missing metadata file at ${projectFilePath}`,
+    ok: projectFileExists,
+    detail: projectFileExists
+      ? `Found metadata file at ${projectFilePath}`
+      : `Missing metadata file at ${projectFilePath}`,
   });
 
   for (const [name, command] of [
@@ -384,19 +361,27 @@ export async function getDoctor(project: LocatedProject | null): Promise<DoctorR
     detail: "Codex SDK dependency is installed with the CLI package.",
   });
 
-  if (project.layout === "legacy") {
-    warnings.push(project.legacyWarning ?? "Legacy layout detected.");
-  }
-
   if (controlExists) {
     const control = await readControlFile(project);
+    const researchMode = getResearchMode(control);
     const researchModeWarning = getResearchModeWarning(control);
+    checks.push({
+      name: "research_mode",
+      ok: researchModeWarning === null,
+      detail: researchModeWarning ?? `Found researchMode '${researchMode}'.`,
+    });
     if (researchModeWarning) {
       warnings.push(researchModeWarning);
     }
     if (!isIntakeComplete(control)) {
       warnings.push("Research intake is not complete.");
     }
+  } else {
+    checks.push({
+      name: "research_mode",
+      ok: false,
+      detail: "Cannot validate researchMode because the control file is missing.",
+    });
   }
 
   return {

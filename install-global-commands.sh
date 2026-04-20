@@ -31,9 +31,8 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./install-global-commands.sh [--bin-dir /path/to/bin]
 
-Builds the TypeScript Dr.Ralph CLI and installs two global commands:
+Builds the TypeScript Dr.Ralph CLI and installs one global command:
   ralph
-  ralph-bootstrap
 EOF
       exit 0
       ;;
@@ -51,15 +50,13 @@ npm run build
 mkdir -p "$BIN_DIR"
 
 ln -sf "$SCRIPT_DIR/bin/ralph" "$BIN_DIR/ralph"
-ln -sf "$SCRIPT_DIR/bin/ralph-bootstrap" "$BIN_DIR/ralph-bootstrap"
 
-chmod 755 "$SCRIPT_DIR/bin/ralph" "$SCRIPT_DIR/bin/ralph-bootstrap" "$SCRIPT_DIR/bootstrap-ralph.sh"
+chmod 755 "$SCRIPT_DIR/bin/ralph"
 
 echo "Installed Ralph commands into: $BIN_DIR"
 echo ""
 echo "Commands:"
 echo "  ralph"
-echo "  ralph-bootstrap"
 
 case ":$PATH:" in
   *":$BIN_DIR:"*)

@@ -9,9 +9,9 @@ import { z } from "zod";
 import packageJson from "../package.json" with { type: "json" };
 import { runInteractiveIntake, intakeSet } from "./intake.js";
 import { startMcpServer } from "./mcp-server.js";
-import { getDoctor, getStatus, initProject, locateProject, readControlFile, writeControlFile } from "./project.js";
+import { getDoctor, getStatus, initProject, locateProject } from "./project.js";
 import { runResearch } from "./run.js";
-import { getLatestSession, readSessionState } from "./sessions.js";
+import { readSessionState } from "./sessions.js";
 import { RESEARCH_MODES, type DoctorResult, type LocatedProject, type ResearchMode, type StatusResult } from "./types.js";
 
 function printJson(value: unknown): void {
@@ -26,9 +26,6 @@ function printStatus(status: StatusResult): void {
 
   process.stdout.write(`Project root: ${status.projectRoot}\n`);
   process.stdout.write(`Layout: ${status.layout}\n`);
-  if (status.legacyWarning) {
-    process.stdout.write(`Warning: ${status.legacyWarning}\n`);
-  }
   process.stdout.write(`Control file: ${status.controlFilePath}\n`);
   process.stdout.write(`Research mode: ${status.researchMode ?? "unknown"}\n`);
   if (status.researchModeWarning) {
@@ -209,10 +206,6 @@ async function startRepl(project: LocatedProject): Promise<void> {
 }
 
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
-  if (argv[0] === "--init-intake") {
-    argv = ["intake", ...argv.slice(1)];
-  }
-
   const program = new Command();
   program
     .name("ralph")
