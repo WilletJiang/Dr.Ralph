@@ -12,10 +12,10 @@ import {
   chooseBackend,
   CodexBackend,
   defaultBackendForTool,
-  loadPromptTemplate,
   LocalCliBackend,
   syncSessionFromControl,
 } from "./backends.js";
+import { buildRunPrompt } from "./prompt-builder.js";
 import { BackendRunContext, LocatedProject, SessionState, ToolName } from "./types.js";
 
 async function snapshotArtifacts(paths: ReturnType<typeof getArtifactPaths>) {
@@ -93,8 +93,6 @@ export async function runResearch(
     return session;
   }
 
-  const prompt = await loadPromptTemplate(options.tool);
-
   for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
     control = await readControlFile(project);
     if (getAutomationState(control) === "awaiting_user_review") {
@@ -111,6 +109,12 @@ export async function runResearch(
 
     session.currentStage = getCurrentStage(control);
     session.currentItemId = getCurrentItemId(control);
+    const prompt = await buildRunPrompt({
+      tool: options.tool,
+      control,
+      currentStage: session.currentStage,
+      currentItemId: session.currentItemId,
+    });
     const context: BackendRunContext = {
       session,
       prompt,

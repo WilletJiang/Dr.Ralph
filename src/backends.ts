@@ -1,30 +1,9 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { Codex, type ThreadEvent, type ThreadOptions } from "@openai/codex-sdk";
 
-import { findPackageRoot } from "./package-root.js";
 import { appendSessionEvent } from "./sessions.js";
 import { readControlFile, getCurrentItemId, getCurrentStage, getAutomationState } from "./project.js";
 import { BackendRunContext, BackendRunResult, LocatedProject, RalphEvent, ToolName } from "./types.js";
-
-function resolvePromptFile(tool: ToolName): string {
-  const packageRoot = findPackageRoot();
-  switch (tool) {
-    case "claude":
-      return join(packageRoot, "CLAUDE.md");
-    case "amp":
-      return join(packageRoot, "prompt.md");
-    case "codex":
-    default:
-      return join(packageRoot, "CODEX.md");
-  }
-}
-
-export async function loadPromptTemplate(tool: ToolName): Promise<string> {
-  return readFile(resolvePromptFile(tool), "utf8");
-}
 
 function normalizeCodexThreadOptions(context: BackendRunContext): ThreadOptions {
   const model = context.session.model === "gpt5.4-xhigh" ? "gpt-5.4" : context.session.model;

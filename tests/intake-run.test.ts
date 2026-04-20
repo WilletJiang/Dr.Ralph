@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodexBackend, LocalCliBackend } from "../src/backends.js";
 import { intakeSet } from "../src/intake.js";
 import { createSession } from "../src/sessions.js";
-import { getArtifactPaths, getStatus, initProject, readControlFile } from "../src/project.js";
+import { getArtifactPaths, getStatus, initProject, readControlFile, writeControlFile } from "../src/project.js";
 import { runResearch } from "../src/run.js";
 import type { BackendRunContext } from "../src/types.js";
 
@@ -200,5 +200,58 @@ describe("intake and run behavior", () => {
       project.rootDir,
     );
     expect(result.finalResponse).toContain("TEST_OK");
+  });
+
+  it("rebuilds the compiled prompt when the active outer-loop stage changes between iterations", async () => {
+    const project = await makeProject();
+    await intakeSet(project, {
+      background: "systems researcher",
+      requirements: "stage-aware compiled prompts",
+      resources: "local test only",
+      collaboration: "stop before implementation",
+      extra: "prefer simple ideas",
+    });
+
+    const prompts: string[] = [];
+    const runTurn = vi.spyOn(LocalCliBackend.prototype, "runTurn").mockImplementation(async (context) => {
+      prompts.push(context.prompt);
+
+      if (prompts.length === 1) {
+        const control = await readControlFile(project);
+        const first = ((control.userStories ?? []) as Record<string, unknown>[]).find(
+          (story) => story.id === "ER-001",
+        );
+        if (first) {
+          first.status = "promoted";
+          first.passes = true;
+        }
+        await writeControlFile(project, control);
+        return {
+          lifecycleState: "completed",
+          finalResponse: "continue",
+        };
+      }
+
+      return {
+        lifecycleState: "completed",
+        finalResponse: "<promise>COMPLETE</promise>",
+      };
+    });
+
+    try {
+      const session = await runResearch(project, {
+        tool: "amp",
+        model: "gpt5.4-xhigh",
+        maxIterations: 2,
+      });
+
+      expect(session.lifecycleState).toBe("completed");
+      expect(prompts).toHaveLength(2);
+      expect(prompts[0]).toContain("### Current Stage: `problem_framing`");
+      expect(prompts[1]).toContain("### Current Stage: `evaluation_framing`");
+      expect(prompts[0]).not.toBe(prompts[1]);
+    } finally {
+      runTurn.mockRestore();
+    }
   });
 });

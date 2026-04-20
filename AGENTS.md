@@ -226,4 +226,4 @@ Mode-specific constraints belong to the selected `researchMode`:
 - `idea.md` - best current idea
 - `research/` - overview, literature, and final review artifacts
 - `experiments/early-exploration/` - plan, live log, per-run artifacts, and iteration transcripts
-- `CODEX.md` / `prompt.md` / `CLAUDE.md` - tool prompts
+- `prompt.md` - shared provider shell used by the dynamic prompt builder

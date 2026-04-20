@@ -126,7 +126,7 @@ Mode-specific hard filters live inside the selected scaffold and prompt instruct
 
 ## Files
 
-`research_program.json` is the canonical control file. `.ralph/project.json` marks the directory as a Ralph project. `templates/` contains the mode-specific scaffold packs used by `ralph init`. `idea.md` is the current best version of the idea. `research/` holds overview, literature, and final review artifacts. `experiments/early-exploration/` holds the exploration plan, live log, and per-run evidence. `CODEX.md`, `prompt.md`, and `CLAUDE.md` are the packaged prompt templates used by the backends.
+`research_program.json` is the canonical control file. `.ralph/project.json` marks the directory as a Ralph project. `templates/` contains the mode-specific scaffold packs used by `ralph init`. `idea.md` is the current best version of the idea. `research/` holds overview, literature, and final review artifacts. `experiments/early-exploration/` holds the exploration plan, live log, and per-run evidence. `prompt.md` is the packaged shared prompt shell used by the dynamic prompt builder.
 
 Theoretical projects also get `.mcp.json`, `.ralph/tooling/lean4-env.sh`, and `research_program.json.theoreticalTooling` as part of Lean setup.
 
