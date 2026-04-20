@@ -11,3 +11,9 @@ progress.txt
 
 #Claude
 .claude/
+
+# Node / TS build artifacts
+node_modules/
+dist/
+.vitest/
+coverage/

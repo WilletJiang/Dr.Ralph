@@ -1,0 +1,292 @@
+{
+  "project": "ResearchProject",
+  "branchName": "ralph/research-project",
+  "description": "Auto-research harness for theoretical research.",
+  "researchMode": "theoretical_research",
+  "theoreticalTooling": {
+    "profile": "lean4_skills_plus_lsp",
+    "required": true,
+    "lean4SkillsRepoUrl": "https://github.com/cameronfreer/lean4-skills.git",
+    "lean4SkillsRoot": "",
+    "lean4PluginRoot": "",
+    "lean4SkillPath": "",
+    "lean4Scripts": "",
+    "lean4References": "",
+    "leanLspMcpRequired": true,
+    "leanLspMcpInstallCommand": "uv tool install --force lean-lsp-mcp",
+    "leanLspMcpCommand": "lean-lsp-mcp",
+    "leanLspMcpArgs": [
+      "--project",
+      "."
+    ],
+    "envScriptPath": "",
+    "mcpConfigPath": ""
+  },
+  "problem": {
+    "source": "user",
+    "question": "What exact theoretical question, definition, or conjecture are we trying to sharpen and validate with Lean-backed checks?",
+    "successDefinition": [
+      "Produce a sharp formulation of the core problem",
+      "Arrive at a plausible theorem shape, conjecture, or obstruction",
+      "Develop a proof strategy that can survive Lean-backed validation where appropriate",
+      "Respect the user's background, resources, and explicit requirements"
+    ],
+    "nonGoals": [
+      "Do not auto-start implementation in src/ before user review",
+      "Do not simulate progress with vague definitions or cosmetic novelty",
+      "Do not keep weak conjectures alive after decisive negative evidence",
+      "Do not continue on paper-only proof claims when Lean-backed checks reveal blockers"
+    ]
+  },
+  "researcherContext": {
+    "required": true,
+    "isComplete": false,
+    "intakeFile": "research/intake.md",
+    "backgroundSummary": "",
+    "requirementsSummary": "",
+    "availableResources": "",
+    "collaborationPreferences": "",
+    "lastUpdated": ""
+  },
+  "harness": {
+    "ideaFile": "idea.md",
+    "overviewFile": "research/overview.md",
+    "literatureFile": "research/literature/review.md",
+    "progressFile": "progress.txt",
+    "explorationPlanFile": "experiments/early-exploration/plan.md",
+    "explorationRoot": "experiments/early-exploration",
+    "liveLogFile": "experiments/early-exploration/live-log.md",
+    "iterationLogRoot": "experiments/early-exploration/agent-runs",
+    "reviewMemoFile": "research/final-review.md",
+    "automationBoundary": "user_review",
+    "postReviewStagesRequireUser": true,
+    "rules": [
+      "Do not start autonomous research until the user has provided research background and requirements",
+      "Every exploration pass must save notes, Lean-backed checks, attempted arguments, and interpretation",
+      "idea.md must be revised whenever the best current formulation changes",
+      "The loop must stop once the idea is professionalized and ready for user review"
+    ]
+  },
+  "automation": {
+    "mode": "auto_research_only",
+    "state": "running",
+    "boundaryStage": "user_review",
+    "userIntakeRequired": true,
+    "stopWhen": [
+      "review_memo_is_ready",
+      "automation_state_becomes_awaiting_user_review",
+      "the_best_current_idea_is_killed_by_evidence"
+    ],
+    "requiresUserInterventionFor": [],
+    "notes": "Theoretical projects stop at the user review gate."
+  },
+  "taste": {
+    "principles": [
+      "Prefer the smallest sharp idea",
+      "Reject kitchen-sink proposals",
+      "One item should test one mechanism",
+      "Complexity must earn its keep",
+      "Negative evidence should kill weak ideas"
+    ],
+    "hardRules": [
+      "If the central definitions cannot be stated crisply, simplify them",
+      "If the conjecture is too vague to attack or falsify, sharpen it before proceeding",
+      "If a counterexample or obstruction kills the claim, do not rescue it with ad hoc complexity",
+      "If a claim cannot survive the strongest available Lean-backed validation, treat that as real evidence",
+      "If the contribution would not survive honest expert scrutiny, sharpen it or kill it"
+    ]
+  },
+  "userStories": [
+    {
+      "id": "TR-001",
+      "stage": "problem_framing",
+      "title": "Lock the exact theoretical question and win condition",
+      "hypothesis": "A sharper problem framing prevents the loop from wandering into vague or unattackable claims.",
+      "deliverables": [
+        "research/overview.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "The question must be explicit and falsifiable where possible",
+        "Success conditions must be honest about what counts as progress"
+      ],
+      "acceptanceCriteria": [
+        "Write the exact question, non-goals, and win condition",
+        "Record the research box and hard constraints clearly",
+        "Remove ambiguity about what the contribution would be"
+      ],
+      "priority": 1,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-002",
+      "stage": "concept_framing",
+      "title": "Clarify the key definitions and conceptual bottlenecks",
+      "hypothesis": "A crisp conceptual framing exposes the real mechanism gap before conjecture shaping begins.",
+      "deliverables": [
+        "research/overview.md"
+      ],
+      "constraints": [
+        "Do not overproduce definitions that are not needed",
+        "Tie each concept to a concrete role in the argument"
+      ],
+      "acceptanceCriteria": [
+        "State the key objects and definitions cleanly",
+        "Identify the main conceptual bottlenecks",
+        "Record what ambiguity still blocks theorem shaping"
+      ],
+      "priority": 2,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-003",
+      "stage": "literature_review",
+      "title": "Study the most relevant prior work deeply",
+      "hypothesis": "A targeted literature review will separate real conceptual gaps from fake novelty.",
+      "deliverables": [
+        "research/literature/review.md"
+      ],
+      "constraints": [
+        "Focus on the strongest relevant work only",
+        "Explain what each result or method leaves unresolved"
+      ],
+      "acceptanceCriteria": [
+        "Document the strongest relevant prior work",
+        "Summarize each mechanism or argument shape",
+        "Identify at least one concrete gap worth pursuing"
+      ],
+      "priority": 3,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-004",
+      "stage": "statement_drafting",
+      "title": "Draft the strongest plausible theorem or conjecture shape",
+      "hypothesis": "A good target statement can usually be sharpened before heavy proof search if the problem framing is honest.",
+      "deliverables": [
+        "idea.md"
+      ],
+      "constraints": [
+        "State the claim as sharply as current evidence allows",
+        "Do not hide uncertainty behind vague wording"
+      ],
+      "acceptanceCriteria": [
+        "Write the core claim crisply",
+        "Explain why the claim might matter",
+        "State the main evidence or intuition supporting it"
+      ],
+      "priority": 4,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-005",
+      "stage": "proof_strategy",
+      "title": "Design the main proof strategy",
+      "hypothesis": "A convincing proof strategy can be judged before exhaustive derivations if the mechanism is real.",
+      "deliverables": [
+        "idea.md",
+        "experiments/early-exploration/plan.md"
+      ],
+      "constraints": [
+        "Prefer the simplest credible proof route",
+        "Identify the main lemmas, reductions, or obstructions explicitly"
+      ],
+      "acceptanceCriteria": [
+        "Write the candidate proof strategy",
+        "List the key lemmas or subgoals",
+        "Record what would most likely break the argument"
+      ],
+      "priority": 5,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-006",
+      "stage": "lean_formalization",
+      "title": "Run Lean-backed theorem and proof validation checks",
+      "hypothesis": "Small, decisive Lean-backed checks can kill or sharpen a theoretical idea before it hardens into self-deception.",
+      "deliverables": [
+        "experiments/early-exploration/plan.md",
+        "experiments/early-exploration/live-log.md",
+        "idea.md"
+      ],
+      "constraints": [
+        "Use the configured lean4_skills_plus_lsp stack unless a hard blocker is found",
+        "Record attempted examples, obstructions, failed proof routes, and Lean-backed findings",
+        "Treat negative evidence as first-class"
+      ],
+      "acceptanceCriteria": [
+        "Perform the planned Lean-backed checks",
+        "Save the attempted arguments, Lean-backed findings, and outcomes",
+        "Update idea.md as evidence sharpens or weakens the claim"
+      ],
+      "priority": 6,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-007",
+      "stage": "idea_convergence",
+      "title": "Converge the final idea package",
+      "hypothesis": "Once the main unknowns are resolved, the best move is to professionalize the formulation and stop.",
+      "deliverables": [
+        "idea.md",
+        "research/final-review.md"
+      ],
+      "constraints": [
+        "Stop once the core conjecture is either credible or dead",
+        "Make the final writeup reviewer-ready"
+      ],
+      "acceptanceCriteria": [
+        "Rewrite idea.md into a clean final version",
+        "Write a final review memo grounded in the checks performed",
+        "Clarify remaining risks and next reviewer decision"
+      ],
+      "priority": 7,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-008",
+      "stage": "user_review",
+      "title": "Stop at the user review gate",
+      "hypothesis": "A human review gate prevents the loop from drifting beyond justified belief.",
+      "deliverables": [
+        "research/final-review.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "Set automation.state to awaiting_user_review",
+        "Do not auto-advance beyond this point"
+      ],
+      "acceptanceCriteria": [
+        "Leave the repository ready for human review",
+        "Record the stop condition in the control file",
+        "Stop the autonomous loop cleanly"
+      ],
+      "priority": 8,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    }
+  ]
+}

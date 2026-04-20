@@ -1,0 +1,336 @@
+{
+  "project": "ResearchProject",
+  "branchName": "ralph/research-project",
+  "description": "Auto-research harness for experimental research.",
+  "researchMode": "experimental_research",
+  "problem": {
+    "source": "user",
+    "question": "What concrete experimental question are we trying to answer?",
+    "successDefinition": [
+      "Produce a concise, testable idea with a crisp mechanism",
+      "Define an evaluation plan that can distinguish signal from noise",
+      "Show early evidence that the mechanism is real, necessary, and worth review",
+      "Respect the user's background, resources, and explicit requirements"
+    ],
+    "nonGoals": [
+      "Do not auto-start implementation in src/ before user review",
+      "Do not rely on hidden ensembling, metric gaming, or benchmark leakage",
+      "Do not settle for a narrow tweak with weak upside or unclear evaluation"
+    ]
+  },
+  "researcherContext": {
+    "required": true,
+    "isComplete": false,
+    "intakeFile": "research/intake.md",
+    "backgroundSummary": "",
+    "requirementsSummary": "",
+    "availableResources": "",
+    "collaborationPreferences": "",
+    "lastUpdated": ""
+  },
+  "benchmark": {
+    "name": "",
+    "primaryMetric": "",
+    "secondaryMetrics": [],
+    "baselineScore": 0,
+    "targetScore": 0,
+    "comparisonTarget": "",
+    "constraints": []
+  },
+  "harness": {
+    "ideaFile": "idea.md",
+    "overviewFile": "research/overview.md",
+    "literatureFile": "research/literature/review.md",
+    "progressFile": "progress.txt",
+    "explorationPlanFile": "experiments/early-exploration/plan.md",
+    "explorationRoot": "experiments/early-exploration",
+    "liveLogFile": "experiments/early-exploration/live-log.md",
+    "iterationLogRoot": "experiments/early-exploration/agent-runs",
+    "reviewMemoFile": "research/final-review.md",
+    "implementationTargetDir": "src",
+    "tuningRoot": "research/tuning",
+    "automationBoundary": "user_review",
+    "postReviewStagesRequireUser": true,
+    "rules": [
+      "Do not auto-start implementation before the user review gate is reached and unlocked by a human",
+      "Do not start autonomous research until the user has provided research background and requirements",
+      "Every exploration run must save commands, configs, logs, results, and interpretation",
+      "idea.md must be revised whenever evidence changes the best current version of the idea",
+      "The loop must stop once the idea is professionalized and ready for user review"
+    ]
+  },
+  "automation": {
+    "mode": "auto_research_only",
+    "state": "running",
+    "boundaryStage": "user_review",
+    "userIntakeRequired": true,
+    "stopWhen": [
+      "review_memo_is_ready",
+      "automation_state_becomes_awaiting_user_review",
+      "the_best_current_idea_is_killed_by_evidence"
+    ],
+    "requiresUserInterventionFor": [
+      "implementation",
+      "benchmark_tuning"
+    ],
+    "notes": "Post-review implementation and benchmark tuning are intentionally outside the autonomous loop."
+  },
+  "taste": {
+    "principles": [
+      "Prefer the smallest sharp idea",
+      "Reject kitchen-sink proposals",
+      "One item should test one mechanism",
+      "Complexity must earn its keep",
+      "Negative evidence should kill weak ideas"
+    ],
+    "hardRules": [
+      "If the mechanism cannot be explained crisply in 1-2 sentences, reject or simplify it",
+      "If the evaluation setup cannot distinguish real signal from noise, simplify or redesign it",
+      "If the novelty is only a narrow follow-up tweak without a qualitatively new mechanism, reject it",
+      "If the idea would not clear an honest review bar under the user's constraints, sharpen it or kill it"
+    ]
+  },
+  "officialResult": {
+    "baselineScore": 0,
+    "currentBestScore": 0,
+    "currentBestItemId": "",
+    "constraintsSatisfied": true,
+    "notes": ""
+  },
+  "userStories": [
+    {
+      "id": "ER-001",
+      "stage": "problem_framing",
+      "title": "Lock the exact research question and win condition",
+      "hypothesis": "A sharper problem framing prevents the loop from wandering into metric gaming or low-upside novelty.",
+      "deliverables": [
+        "research/overview.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "The question must be explicit and falsifiable",
+        "Success conditions must be implementation-free at this stage"
+      ],
+      "acceptanceCriteria": [
+        "Write the exact question, non-goals, and win condition",
+        "Record the research box and key constraints clearly",
+        "Remove ambiguity about what counts as success versus noise"
+      ],
+      "priority": 1,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-002",
+      "stage": "evaluation_framing",
+      "title": "Map the evaluation landscape and likely bottlenecks",
+      "hypothesis": "A careful evaluation framing will expose a narrow gap worth targeting before method design begins.",
+      "deliverables": [
+        "research/overview.md"
+      ],
+      "constraints": [
+        "Do not commit to a final method yet",
+        "Must identify evaluation gotchas and systems constraints that actually matter"
+      ],
+      "acceptanceCriteria": [
+        "Summarize baseline strengths and weaknesses",
+        "Document likely failure slices or bottleneck clusters",
+        "Record evaluation rules that would invalidate a fake win"
+      ],
+      "priority": 2,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-003",
+      "stage": "literature_review",
+      "title": "Study the most relevant prior work deeply",
+      "hypothesis": "A targeted literature review will separate real mechanism gaps from cosmetic novelty opportunities.",
+      "deliverables": [
+        "research/literature/review.md"
+      ],
+      "constraints": [
+        "Focus on the strongest relevant methods only",
+        "Explain why each method may fail under this evaluation setup"
+      ],
+      "acceptanceCriteria": [
+        "Document the strongest relevant prior methods",
+        "Summarize each method's mechanism and limitation",
+        "Identify at least one concrete gap worth testing"
+      ],
+      "priority": 3,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-004",
+      "stage": "idea_proposal",
+      "title": "Write the first full idea.md",
+      "hypothesis": "A strong initial idea can be stated before heavy experimentation if the problem and gap are sharp enough.",
+      "deliverables": [
+        "idea.md"
+      ],
+      "constraints": [
+        "The idea must be concise, elegant, and mechanistically crisp",
+        "The idea must have a clean evaluation path under the available setup",
+        "The idea must not merely be a narrow follow-up patch"
+      ],
+      "acceptanceCriteria": [
+        "State the mechanism in 1-2 sentences",
+        "Explain the novelty, evaluation fit, falsification path, and review-level claim honestly",
+        "List the smallest decisive experiments"
+      ],
+      "priority": 4,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-005",
+      "stage": "validation_plan",
+      "title": "Design the decisive early-exploration plan",
+      "hypothesis": "A minimal but decisive validation plan can determine whether the idea deserves to survive.",
+      "deliverables": [
+        "experiments/early-exploration/plan.md",
+        "experiments/early-exploration/live-log.md"
+      ],
+      "constraints": [
+        "Plan the smallest set of decisive tests, not an unfocused sweep",
+        "Explicitly define kill criteria and stop conditions"
+      ],
+      "acceptanceCriteria": [
+        "Write the experiment plan, required artifacts, and decision thresholds",
+        "Define what can be parallelized and what must remain sequential",
+        "Record what evidence would kill, revise, or promote the idea"
+      ],
+      "priority": 5,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-006",
+      "stage": "early_exploration",
+      "title": "Execute the early-exploration plan",
+      "hypothesis": "Small, decisive experiments can show whether the mechanism is real, necessary, and worth continued belief.",
+      "deliverables": [
+        "experiments/early-exploration/",
+        "idea.md"
+      ],
+      "constraints": [
+        "All commands, configs, logs, and interpretations must be saved",
+        "Problems discovered during exploration must trigger explicit reasoning and refinement"
+      ],
+      "acceptanceCriteria": [
+        "Run the planned decisive experiments",
+        "Save raw evidence and a readable summary under the exploration root",
+        "Update idea.md as evidence sharpens or weakens the mechanism"
+      ],
+      "priority": 6,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-007",
+      "stage": "idea_convergence",
+      "title": "Stop exploration and professionalize the final idea package",
+      "hypothesis": "Once the major unknowns are resolved, the best contribution is to converge the idea cleanly instead of continuing to explore.",
+      "deliverables": [
+        "idea.md",
+        "research/final-review.md"
+      ],
+      "constraints": [
+        "Stop once the core unknowns are resolved or the idea is invalidated",
+        "Make the final writeup reviewer-ready"
+      ],
+      "acceptanceCriteria": [
+        "Rewrite idea.md into a clean final version",
+        "Write a final review memo grounded in evidence",
+        "Clarify remaining risks and next reviewer decision"
+      ],
+      "priority": 7,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-008",
+      "stage": "user_review",
+      "title": "Stop at the user review gate",
+      "hypothesis": "A human review gate after idea convergence prevents autonomous drift into implementation without approval.",
+      "deliverables": [
+        "research/final-review.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "Do not auto-advance into implementation",
+        "Set automation.state to awaiting_user_review"
+      ],
+      "acceptanceCriteria": [
+        "Leave the repository ready for human review",
+        "Record the stop condition in the control file",
+        "Stop the autonomous loop cleanly"
+      ],
+      "priority": 8,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-009",
+      "stage": "implementation",
+      "title": "Implementation after explicit human approval",
+      "hypothesis": "Only a human should decide whether the idea deserves code-level execution.",
+      "deliverables": [
+        "src/"
+      ],
+      "constraints": [
+        "Requires explicit human approval",
+        "Out of scope for autonomous execution"
+      ],
+      "acceptanceCriteria": [
+        "Human approves implementation scope",
+        "Implementation plan is explicit"
+      ],
+      "priority": 9,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": true,
+      "notes": ""
+    },
+    {
+      "id": "ER-010",
+      "stage": "benchmark_tuning",
+      "title": "Benchmark tuning after explicit human approval",
+      "hypothesis": "Tuning should happen only after the core idea is accepted by a reviewer.",
+      "deliverables": [
+        "research/tuning/"
+      ],
+      "constraints": [
+        "Requires explicit human approval",
+        "Out of scope for autonomous execution"
+      ],
+      "acceptanceCriteria": [
+        "Human approves tuning scope",
+        "Tuning goals are explicit"
+      ],
+      "priority": 10,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": true,
+      "notes": ""
+    }
+  ]
+}

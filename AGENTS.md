@@ -186,25 +186,22 @@ calm, precise, reality-constrained, and relentlessly useful.
 
 ## Overview
 
-Ralph is a fresh-context benchmark research harness.
+Ralph is a fresh-context, mode-aware research harness.
 
 The canonical control file is `research_program.json`.
 `prd.json` is legacy fallback only.
+`researchMode` selects the active autonomous flow.
 
 ## Research Loop
 
-Ralph should move through:
-- researcher intake
-- problem framing
-- benchmark overview
-- literature review
-- `idea.md`
-- validation plan
-- early exploration under `experiments/early-exploration/`
-- idea convergence and final review memo
-- user review gate
+Ralph should move through the flow defined by `researchMode`:
 
-Implementation in `src/` and benchmark tuning are post-review stages that require explicit user intervention.
+- `experimental_research`:
+  researcher intake, problem framing, evaluation framing, literature review, `idea.md`, validation plan, early exploration, idea convergence, user review gate
+- `theoretical_research`:
+  researcher intake, problem framing, concept framing, literature review, `idea.md`, proof strategy, Lean-backed formalization checks, idea convergence, user review gate
+
+Implementation in `src/`, benchmark tuning, or any other post-review execution require explicit user intervention.
 
 ## Taste
 
@@ -213,13 +210,17 @@ Implementation in `src/` and benchmark tuning are post-review stages that requir
 - One item should test one mechanism.
 - Complexity must earn its keep.
 - Negative evidence should kill weak ideas.
-- The idea must map cleanly to modern large-scale GPU parallel execution.
 - A narrow follow-up tweak is not enough.
 - The user's stated background and requirements are hard context.
+
+Mode-specific constraints belong to the selected `researchMode`:
+- `experimental_research`: treat evaluation, benchmark, and systems constraints in the control file as hard.
+- `theoretical_research`: prefer crisp definitions, credible theorem or conjecture shapes, proof strategies, and Lean-backed validation. Use the configured `lean4_skills_plus_lsp` stack by default instead of trusting long freehand AI derivations.
 
 ## Key Files
 
 - `ralph.sh` - harness runner
+- `templates/` - mode-specific scaffold packs used by `ralph init`
 - `research_program.json.example` - control file example
 - `research/intake.md` - user-provided background and requirements
 - `idea.md` - best current idea

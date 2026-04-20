@@ -57,6 +57,14 @@ elif [ -f "$LEGACY_PRD_FILE" ]; then
   CONTROL_FILE="$LEGACY_PRD_FILE"
 fi
 
+if [ -f "$SCRIPT_DIR/dist/cli-bin.js" ]; then
+  if [ "$INIT_INTAKE" = "true" ]; then
+    exec node "$SCRIPT_DIR/dist/cli-bin.js" intake
+  fi
+
+  exec node "$SCRIPT_DIR/dist/cli-bin.js" run --tool "$TOOL" --model "$CODEX_MODEL" --max-iterations "$MAX_ITERATIONS"
+fi
+
 json_get() {
   local filter="$1"
   if [ -f "$CONTROL_FILE" ]; then

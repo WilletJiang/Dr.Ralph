@@ -4,16 +4,16 @@
     "name": "snarktank"
   },
   "metadata": {
-    "description": "Skills for the Ralph autonomous agent system - Generate PRDs and convert them to prd.json format for autonomous execution",
+    "description": "Skills for the Ralph benchmark research harness - draft research briefs and generate research_program.json for autonomous runs",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "ralph-skills",
       "source": "./",
-      "description": "PRD generation and conversion skills for the Ralph autonomous agent loop",
+      "description": "Research brief and research_program.json generation skills for the Ralph autonomous research loop",
       "version": "1.0.0",
-      "keywords": ["ralph", "prd", "automation", "agent", "planning"],
+      "keywords": ["ralph", "research", "benchmark", "automation", "agent", "planning"],
       "category": "productivity",
       "skills": "./skills/"
     }
