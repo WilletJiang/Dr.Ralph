@@ -1,29 +1,41 @@
 # Final Review Memo
 
-## Decision
+## Recommendation
 
-What is the current recommendation for the human reviewer?
+State whether the final review recommends `approve`, `reject`, or `redirect`, and explain why.
 
-## Final Idea
+## Final Claim
 
 State the final professionalized idea in a few sharp paragraphs.
+
+## Strongest Support
+
+What evidence most strongly supports the claim?
+
+## Strongest Counterevidence
+
+What evidence most strongly weakens the claim or limits confidence?
+
+## Hidden Assumptions
+
+Which assumptions are still carrying the argument?
+
+## Alternatives / Obstructions
+
+What alternative explanations, confounds, or blockers still look serious?
 
 ## Fit To User Requirements
 
 Explain how the final idea aligns with the user's background, resources, and explicit requirements.
 
-## Decisive Evidence
-
-What experiments most strongly support or weaken the idea?
-
-## What Changed During Exploration
-
-How did the idea evolve from its initial version?
-
-## Remaining Risks
+## Residual Risks
 
 What still looks fragile, unclear, or potentially wrong?
 
-## Suggested Next Step For The User
+## Reviewer Questions
 
-What should the reviewer approve, reject, or redirect next?
+What should the human reviewer look at or decide explicitly?
+
+## Suggested Next Step
+
+What should the reviewer approve, reject, redirect, or reopen next?

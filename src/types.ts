@@ -15,6 +15,52 @@ export const THEORETICAL_TOOLING_PROFILES = [
 
 export type TheoreticalToolingProfile = (typeof THEORETICAL_TOOLING_PROFILES)[number];
 
+export const REVIEW_STATUSES = ["pending", "complete"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
+export const REVIEW_NEXT_ACTIONS = ["handoff_to_user", "autonomous_rework"] as const;
+export type ReviewNextAction = (typeof REVIEW_NEXT_ACTIONS)[number];
+
+export const REVIEW_HANDOFF_RECOMMENDATIONS = [
+  "approve",
+  "reject",
+  "redirect",
+  "",
+] as const;
+export type ReviewHandoffRecommendation = (typeof REVIEW_HANDOFF_RECOMMENDATIONS)[number];
+
+export const REVIEW_CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
+export type ReviewConfidence = (typeof REVIEW_CONFIDENCE_LEVELS)[number];
+
+export const REVIEW_EVIDENCE_STRENGTHS = ["weak", "mixed", "strong"] as const;
+export type ReviewEvidenceStrength = (typeof REVIEW_EVIDENCE_STRENGTHS)[number];
+
+export interface ReviewPanel {
+  status: ReviewStatus;
+  cycle: number;
+  nextAction: ReviewNextAction | "";
+  handoffRecommendation: ReviewHandoffRecommendation;
+  reopenStage: string;
+  reworkGoals: string[];
+  confidence: ReviewConfidence | "";
+  evidenceStrength: ReviewEvidenceStrength | "";
+  finalClaim: string;
+  strongestSupport: string[];
+  strongestCounterevidence: string[];
+  hiddenAssumptions: string[];
+  alternativeExplanationsOrObstructions: string[];
+  fitToRequirements: string[];
+  residualRisks: string[];
+  reviewerQuestions: string[];
+  suggestedNextStep: string;
+  completedAt: string;
+}
+
+export interface ReviewReworkPolicy {
+  allowAutonomousRework: boolean;
+  maxCycles: number | null;
+}
+
 export type LifecycleState =
   | "idle"
   | "awaiting_input"

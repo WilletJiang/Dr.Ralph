@@ -2,7 +2,14 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { findPackageRoot } from "./package-root.js";
-import { asString, getAutomationState, getResearchMode, getResearchModeWarning } from "./project.js";
+import {
+  asString,
+  getAutomationState,
+  getResearchMode,
+  getResearchModeWarning,
+  getReviewPanel,
+  getReviewReworkPolicy,
+} from "./project.js";
 import { ResearchMode, ToolName } from "./types.js";
 
 export interface PromptBuildContext {
@@ -23,7 +30,8 @@ const PROGRESS_REPORT_FORMAT = `APPEND to the configured progress file:
 - Exploration log paths touched
 - What was learned
 - Evidence summary
-- Decision: promoted / rejected / blocked / awaiting_user_review
+- Review findings addressed (if on a reopened loop)
+- Decision: promoted / rejected / blocked / autonomous_rework / handoff_to_user / awaiting_user_review
 - How \`idea.md\` changed, if it changed
 - Next best move
 ---
@@ -117,13 +125,21 @@ const STAGE_HARNESSES: Record<ResearchMode, Record<string, string>> = {
       "Converge only the claims that survive evidence, and remove or downgrade any claim that is not honestly supported.",
       "Verify that the final writeup separates what is established from what remains risky, fragile, or merely plausible.",
       "Challenge whether sunk-cost bias, elegance bias, or narrative neatness is keeping a weak idea alive.",
-      "Prepare reviewer-facing artifacts that are sharp, professional, and explicit about residual risk.",
+      "Professionalize `idea.md` so that a later final review can judge the idea cleanly instead of reverse-engineering a messy draft.",
+    ].join("\n- "),
+    final_review: [
+      "Treat this stage as the final AI review controller: inspect the whole research chain, not just the prose quality of the current writeup.",
+      "Write the top-level `review` panel in `research_program.json` before drafting or revising `research/final-review.md`, and keep the panel and memo consistent.",
+      "Verify mechanism evidence separately from result evidence, and challenge whether any apparent win could still be explained by noise, leakage, implementation bias, confounds, or metric gaming.",
+      "Require a positive handoff recommendation to clear a modernity bar: the algorithm should look current rather than stale, and it should have a credible path to large-scale GPU execution rather than collapsing outside toy-scale settings.",
+      "Challenge whether the method is algorithmically dated, architecturally obsolete, serial by design, memory-inefficient at scale, or mismatched to modern accelerator-heavy training or inference regimes.",
+      "If rework is warranted, name a concrete earlier `reopenStage` and explicit `reworkGoals` that can materially improve evidence quality rather than merely polishing prose.",
     ].join("\n- "),
     user_review: [
-      "Treat this stage as a handoff and stop gate, not as an invitation to continue exploring.",
-      "Verify that the repository is review-ready, the final memo is grounded in evidence, and `automation.state` is set to `awaiting_user_review`.",
-      "Challenge whether any important uncertainty, caveat, or evidence gap remains hidden behind polished prose.",
-      "Leave a human reviewer with a clear decision surface: what is supported, what is risky, and what should happen next.",
+      "Treat this stage as a pure handoff and stop gate after `final_review`, not as another chance to continue exploring.",
+      "Verify that `review.status` is `complete`, `review.nextAction` is `handoff_to_user`, and the repository is ready for human inspection.",
+      "Set `automation.state` to `awaiting_user_review` only after the final review package is complete and consistent.",
+      "Leave a human reviewer with a clean stop point and no hidden autonomous continuation.",
     ].join("\n- "),
   },
   theoretical_research: {
@@ -167,13 +183,19 @@ const STAGE_HARNESSES: Record<ResearchMode, Record<string, string>> = {
       "Converge the final formulation only after separating supported claims from unsupported aspirations.",
       "Verify the evidence level behind each remaining claim, reduction, or obstruction, including what Lean did and did not confirm.",
       "Challenge whether 'not yet refuted' is being mistaken for 'credible contribution'.",
-      "Prepare reviewer-facing artifacts that honestly state the contribution, evidence class, and remaining obstruction landscape.",
+      "Professionalize `idea.md` so that a later final review can judge the formulation cleanly instead of decoding a moving target.",
+    ].join("\n- "),
+    final_review: [
+      "Treat this stage as the final AI review controller: inspect the entire theoretical reasoning chain, not just the elegance of the writeup.",
+      "Write the top-level `review` panel in `research_program.json` before drafting or revising `research/final-review.md`, and keep the panel and memo consistent.",
+      "Verify the formulation against Lean-backed findings, paper-only intuitions, hidden assumptions, counterexamples, and known obstructions, and keep those evidence classes explicitly separated.",
+      "If rework is warranted, name a concrete earlier `reopenStage` and explicit `reworkGoals` that can materially change credibility, such as statement drafting, proof strategy, or Lean formalization.",
     ].join("\n- "),
     user_review: [
-      "Treat this stage as a transparent handoff to human review, not as a chance to continue speculative theory search.",
-      "Verify that the final formulation, Lean-backed findings, and residual risks are explicit and reviewer-ready.",
-      "Challenge whether any crucial dependency, hidden assumption, or formalization gap is still buried in the narrative.",
-      "Leave the human reviewer with a crisp judgment surface: what is credible, what is blocked, and what further work would require explicit approval.",
+      "Treat this stage as a transparent handoff and stop gate after `final_review`, not as a chance to continue speculative theory search.",
+      "Verify that `review.status` is `complete`, `review.nextAction` is `handoff_to_user`, and the repository is reviewer-ready.",
+      "Set `automation.state` to `awaiting_user_review` only after the final review package is complete and consistent.",
+      "Leave the human reviewer with a crisp stop point and no hidden autonomous continuation.",
     ].join("\n- "),
   },
 };
@@ -314,6 +336,8 @@ function buildControlContext(
 ): string {
   const problem = (control.problem ?? {}) as Record<string, unknown>;
   const question = asString(problem.question);
+  const review = getReviewPanel(control);
+  const reviewPolicy = getReviewReworkPolicy(control);
 
   return [
     "## Current Control-File Context",
@@ -322,6 +346,11 @@ function buildControlContext(
     `- Current stage: \`${currentStage ?? "none"}\``,
     `- Current item id: \`${currentItemId ?? "none"}\``,
     `- Automation state: \`${getAutomationState(control) ?? "unknown"}\``,
+    `- Review status: \`${review.status}\``,
+    `- Review cycle: ${String(review.cycle)}`,
+    `- Review next action: \`${review.nextAction || "unset"}\``,
+    `- Autonomous review rework allowed: \`${String(reviewPolicy.allowAutonomousRework)}\``,
+    `- Review max cycles: ${reviewPolicy.maxCycles === null ? "none" : String(reviewPolicy.maxCycles)}`,
     `- Problem question: ${question ?? "not specified"}`,
     ...(researchModeWarning
       ? [
@@ -350,6 +379,56 @@ function buildModeBlock(researchMode: ResearchMode | undefined): string {
   ].join("\n");
 }
 
+function formatOptionalListSection(title: string, items: string[]): string {
+  if (items.length === 0) {
+    return [`### ${title}`, "- none recorded"].join("\n");
+  }
+
+  return [`### ${title}`, ...items.map((item) => `- ${item}`)].join("\n");
+}
+
+function buildReworkContext(
+  control: Record<string, unknown>,
+  currentStage: string | null,
+): string {
+  const review = getReviewPanel(control);
+  if (
+    review.status !== "complete" ||
+    review.nextAction !== "autonomous_rework" ||
+    !review.reopenStage ||
+    currentStage === null ||
+    currentStage === "final_review" ||
+    currentStage === "user_review" ||
+    currentStage === "implementation" ||
+    currentStage === "benchmark_tuning"
+  ) {
+    return "";
+  }
+
+  return [
+    "## Active Rework Context",
+    "",
+    `- This stage is running on a reopened path triggered by the most recent \`final_review\`.`,
+    `- Reopened from stage: \`${review.reopenStage}\``,
+    `- Current rework cycle: ${String(review.cycle)}`,
+    "- Treat the review findings below as hard scope for the reopened loop rather than optional background context.",
+    "- Do not spend the reopened loop on unrelated polishing, novelty hunting, or exploratory branches that fail to reduce these review concerns.",
+    "- Each reopened iteration must directly address at least one review finding and record which finding moved, which stayed unresolved, and what new evidence changed.",
+    "",
+    formatOptionalListSection("Rework Goals", review.reworkGoals),
+    "",
+    formatOptionalListSection("Reviewer Questions", review.reviewerQuestions),
+    "",
+    formatOptionalListSection("Strongest Counterevidence", review.strongestCounterevidence),
+    "",
+    formatOptionalListSection("Hidden Assumptions", review.hiddenAssumptions),
+    "",
+    formatOptionalListSection("Residual Risks", review.residualRisks),
+    "",
+    "If the current stage cannot materially reduce these concerns, say so explicitly and justify whether the loop should continue to a later stage or return to final review quickly.",
+  ].join("\n");
+}
+
 export async function buildRunPrompt(context: PromptBuildContext): Promise<string> {
   const providerShell = await loadProviderShell();
   const researchMode = getResearchMode(context.control);
@@ -368,7 +447,7 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "3. Read `researcherContext` and the intake file it points to.",
     "4. If `researcherContext.required` is true and `isComplete` is false, stop and ask the user to complete the intake before doing any autonomous work.",
     "5. Read the paths named in `harness`, especially the progress log, `idea.md`, overview, literature review, exploration plan, live log, and final review memo if they already exist.",
-    "6. Read `problem`, `automation`, and `taste`. Read `benchmark`, `officialResult`, or `theoreticalTooling` only when they are present.",
+    "6. Read `problem`, `automation`, `review`, and `taste`. Read `benchmark`, `officialResult`, or `theoreticalTooling` only when they are present.",
     "7. Check out the branch named in `branchName`.",
     "8. Treat each iteration as fresh-context work: rely on the repository files and Ralph session artifacts, not on prior backend thread memory.",
     "",
@@ -396,9 +475,12 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "2. Keep the work aligned with both the active `researchMode` and the user's stated constraints.",
     "3. Update `idea.md` whenever evidence changes the best current idea.",
     "4. Append a research log entry to the configured progress file.",
-    "5. When the review gate is reached, update `automation.state` to `awaiting_user_review`, write the review memo, and stop.",
+    "5. `final_review` decides whether to reopen an earlier stage or hand off to the user; only `user_review` sets `automation.state` to `awaiting_user_review` and stops.",
+    "6. When an `Active Rework Context` block is present, its review findings are the mandatory agenda for the reopened loop.",
     "",
     formatCurrentItemContract(currentItem, context.currentStage),
+    "",
+    buildReworkContext(context.control, context.currentStage),
     "",
     buildStageHarness(researchMode, context.currentStage),
     "",
@@ -411,10 +493,18 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "### Idea Convergence",
     "- Stop exploration once the major unknowns are resolved or the idea is invalidated.",
     "- Rewrite `idea.md` into a clean, professional final version grounded in evidence.",
-    "- Write `research/final-review.md` with the final idea, decisive evidence, revisions, and remaining risks.",
+    "- Do not use this stage to decide the final handoff versus rework judgment; that belongs to `final_review`.",
+    "",
+    "### Final Review",
+    "- Update the structured `review` panel in `research_program.json` before rewriting `research/final-review.md`.",
+    "- Fill `review.status`, `review.confidence`, `review.evidenceStrength`, `review.finalClaim`, `review.strongestSupport`, `review.strongestCounterevidence`, `review.hiddenAssumptions`, `review.alternativeExplanationsOrObstructions`, `review.fitToRequirements`, `review.residualRisks`, `review.reviewerQuestions`, and `review.suggestedNextStep` explicitly.",
+    "- Choose exactly one `review.nextAction`: `handoff_to_user` or `autonomous_rework`.",
+    "- If `review.nextAction` is `autonomous_rework`, specify a concrete earlier `review.reopenStage` and explicit `review.reworkGoals`.",
+    "- If `review.nextAction` is `handoff_to_user`, specify `review.handoffRecommendation` and leave `automation.state` unchanged for `user_review` to handle.",
     "",
     "### User Review",
-    "- Do not auto-advance beyond this point.",
+    "- Do not perform another substantive research review here; treat this as the stop boundary only.",
+    "- Require `review.status = complete` and `review.nextAction = handoff_to_user` before stopping.",
     "- Set `automation.state` to `awaiting_user_review`.",
     "- Leave the repository ready for a human reviewer to inspect `idea.md` and `research/final-review.md`.",
     "",
@@ -429,6 +519,7 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "Use:",
     "- `status: \"rejected\"` for ideas invalidated on evidence or taste grounds",
     "- `status: \"blocked\"` for infrastructure or prerequisite issues",
+    "- `status: \"queued\"` for the reopened stage path after `final_review` selects `autonomous_rework`",
     "- `status: \"awaiting_user_review\"` for the review-gate item once the handoff package is ready",
     "",
     "## Progress Report Format",

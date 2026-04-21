@@ -65,15 +65,39 @@
     "boundaryStage": "user_review",
     "userIntakeRequired": true,
     "stopWhen": [
-      "review_memo_is_ready",
       "automation_state_becomes_awaiting_user_review",
-      "the_best_current_idea_is_killed_by_evidence"
+      "the_best_current_idea_is_killed_by_evidence",
+      "the_final_review_handoff_package_is_ready"
     ],
+    "reviewReworkPolicy": {
+      "allowAutonomousRework": true,
+      "maxCycles": null
+    },
     "requiresUserInterventionFor": [
       "implementation",
       "benchmark_tuning"
     ],
-    "notes": "Post-review implementation and benchmark tuning are intentionally outside the autonomous loop."
+    "notes": "Post-review implementation and benchmark tuning are intentionally outside the autonomous loop. final_review may reopen earlier autonomous stages before user_review."
+  },
+  "review": {
+    "status": "pending",
+    "cycle": 0,
+    "nextAction": "",
+    "handoffRecommendation": "",
+    "reopenStage": "",
+    "reworkGoals": [],
+    "confidence": "",
+    "evidenceStrength": "",
+    "finalClaim": "",
+    "strongestSupport": [],
+    "strongestCounterevidence": [],
+    "hiddenAssumptions": [],
+    "alternativeExplanationsOrObstructions": [],
+    "fitToRequirements": [],
+    "residualRisks": [],
+    "reviewerQuestions": [],
+    "suggestedNextStep": "",
+    "completedAt": ""
   },
   "taste": {
     "principles": [
@@ -243,20 +267,19 @@
     {
       "id": "ER-007",
       "stage": "idea_convergence",
-      "title": "Stop exploration and professionalize the final idea package",
+      "title": "Stop exploration and professionalize the final idea",
       "hypothesis": "Once the major unknowns are resolved, the best contribution is to converge the idea cleanly instead of continuing to explore.",
       "deliverables": [
-        "idea.md",
-        "research/final-review.md"
+        "idea.md"
       ],
       "constraints": [
         "Stop once the core unknowns are resolved or the idea is invalidated",
-        "Make the final writeup reviewer-ready"
+        "Prepare a reviewer-ready idea without making the final handoff decision yet"
       ],
       "acceptanceCriteria": [
         "Rewrite idea.md into a clean final version",
-        "Write a final review memo grounded in evidence",
-        "Clarify remaining risks and next reviewer decision"
+        "Separate supported claims from remaining risks honestly",
+        "Leave final_review with a clean input package to judge"
       ],
       "priority": 7,
       "status": "queued",
@@ -266,21 +289,23 @@
     },
     {
       "id": "ER-008",
-      "stage": "user_review",
-      "title": "Stop at the user review gate",
-      "hypothesis": "A human review gate after idea convergence prevents autonomous drift into implementation without approval.",
+      "stage": "final_review",
+      "title": "Run the final AI review and decide handoff versus rework",
+      "hypothesis": "A final adversarial review should decide whether the current evidence deserves human review or another autonomous research cycle.",
       "deliverables": [
         "research/final-review.md",
         "research_program.json"
       ],
       "constraints": [
-        "Do not auto-advance into implementation",
-        "Set automation.state to awaiting_user_review"
+        "Write the structured review panel before finalizing the memo",
+        "If autonomous rework is chosen, specify reopenStage and concrete reworkGoals",
+        "A positive handoff must clear both an algorithmic modernity bar and a credible large-scale GPU execution bar"
       ],
       "acceptanceCriteria": [
-        "Leave the repository ready for human review",
-        "Record the stop condition in the control file",
-        "Stop the autonomous loop cleanly"
+        "Fill the review panel with a structured conclusion",
+        "Write a final review memo consistent with the panel",
+        "Choose handoff_to_user or autonomous_rework honestly",
+        "Explicitly judge whether the algorithm is modern enough and whether it can scale credibly to large GPU workloads"
       ],
       "priority": 8,
       "status": "queued",
@@ -290,6 +315,30 @@
     },
     {
       "id": "ER-009",
+      "stage": "user_review",
+      "title": "Stop at the user review gate",
+      "hypothesis": "A human review gate after final_review prevents autonomous drift into implementation without approval.",
+      "deliverables": [
+        "research/final-review.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "Do not auto-advance into implementation",
+        "Set automation.state to awaiting_user_review only after final_review says handoff_to_user"
+      ],
+      "acceptanceCriteria": [
+        "Leave the repository ready for human review",
+        "Record the stop condition in the control file",
+        "Stop the autonomous loop cleanly"
+      ],
+      "priority": 9,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "ER-010",
       "stage": "implementation",
       "title": "Implementation after explicit human approval",
       "hypothesis": "Only a human should decide whether the idea deserves code-level execution.",
@@ -304,14 +353,14 @@
         "Human approves implementation scope",
         "Implementation plan is explicit"
       ],
-      "priority": 9,
+      "priority": 10,
       "status": "queued",
       "passes": false,
       "requiresUserIntervention": true,
       "notes": ""
     },
     {
-      "id": "ER-010",
+      "id": "ER-011",
       "stage": "benchmark_tuning",
       "title": "Benchmark tuning after explicit human approval",
       "hypothesis": "Tuning should happen only after the core idea is accepted by a reviewer.",
@@ -326,7 +375,7 @@
         "Human approves tuning scope",
         "Tuning goals are explicit"
       ],
-      "priority": 10,
+      "priority": 11,
       "status": "queued",
       "passes": false,
       "requiresUserIntervention": true,

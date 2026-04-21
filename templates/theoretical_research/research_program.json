@@ -73,12 +73,36 @@
     "boundaryStage": "user_review",
     "userIntakeRequired": true,
     "stopWhen": [
-      "review_memo_is_ready",
       "automation_state_becomes_awaiting_user_review",
-      "the_best_current_idea_is_killed_by_evidence"
+      "the_best_current_idea_is_killed_by_evidence",
+      "the_final_review_handoff_package_is_ready"
     ],
+    "reviewReworkPolicy": {
+      "allowAutonomousRework": true,
+      "maxCycles": null
+    },
     "requiresUserInterventionFor": [],
-    "notes": "Theoretical projects stop at the user review gate."
+    "notes": "Theoretical projects stop at the user review gate. final_review may reopen earlier autonomous stages before user_review."
+  },
+  "review": {
+    "status": "pending",
+    "cycle": 0,
+    "nextAction": "",
+    "handoffRecommendation": "",
+    "reopenStage": "",
+    "reworkGoals": [],
+    "confidence": "",
+    "evidenceStrength": "",
+    "finalClaim": "",
+    "strongestSupport": [],
+    "strongestCounterevidence": [],
+    "hiddenAssumptions": [],
+    "alternativeExplanationsOrObstructions": [],
+    "fitToRequirements": [],
+    "residualRisks": [],
+    "reviewerQuestions": [],
+    "suggestedNextStep": "",
+    "completedAt": ""
   },
   "taste": {
     "principles": [
@@ -243,20 +267,19 @@
     {
       "id": "TR-007",
       "stage": "idea_convergence",
-      "title": "Converge the final idea package",
+      "title": "Converge the final formulation",
       "hypothesis": "Once the main unknowns are resolved, the best move is to professionalize the formulation and stop.",
       "deliverables": [
-        "idea.md",
-        "research/final-review.md"
+        "idea.md"
       ],
       "constraints": [
         "Stop once the core conjecture is either credible or dead",
-        "Make the final writeup reviewer-ready"
+        "Prepare a reviewer-ready formulation without making the final handoff decision yet"
       ],
       "acceptanceCriteria": [
         "Rewrite idea.md into a clean final version",
-        "Write a final review memo grounded in the checks performed",
-        "Clarify remaining risks and next reviewer decision"
+        "Separate supported claims from remaining risks honestly",
+        "Leave final_review with a clean input package to judge"
       ],
       "priority": 7,
       "status": "queued",
@@ -266,15 +289,39 @@
     },
     {
       "id": "TR-008",
-      "stage": "user_review",
-      "title": "Stop at the user review gate",
-      "hypothesis": "A human review gate prevents the loop from drifting beyond justified belief.",
+      "stage": "final_review",
+      "title": "Run the final AI review and decide handoff versus rework",
+      "hypothesis": "A final adversarial review should decide whether the current formulation deserves human review or another autonomous theory cycle.",
       "deliverables": [
         "research/final-review.md",
         "research_program.json"
       ],
       "constraints": [
-        "Set automation.state to awaiting_user_review",
+        "Write the structured review panel before finalizing the memo",
+        "If autonomous rework is chosen, specify reopenStage and concrete reworkGoals"
+      ],
+      "acceptanceCriteria": [
+        "Fill the review panel with a structured conclusion",
+        "Write a final review memo consistent with the panel",
+        "Choose handoff_to_user or autonomous_rework honestly"
+      ],
+      "priority": 8,
+      "status": "queued",
+      "passes": false,
+      "requiresUserIntervention": false,
+      "notes": ""
+    },
+    {
+      "id": "TR-009",
+      "stage": "user_review",
+      "title": "Stop at the user review gate",
+      "hypothesis": "A human review gate after final_review prevents the loop from drifting beyond justified belief.",
+      "deliverables": [
+        "research/final-review.md",
+        "research_program.json"
+      ],
+      "constraints": [
+        "Set automation.state to awaiting_user_review only after final_review says handoff_to_user",
         "Do not auto-advance beyond this point"
       ],
       "acceptanceCriteria": [
@@ -282,7 +329,7 @@
         "Record the stop condition in the control file",
         "Stop the autonomous loop cleanly"
       ],
-      "priority": 8,
+      "priority": 9,
       "status": "queued",
       "passes": false,
       "requiresUserIntervention": false,

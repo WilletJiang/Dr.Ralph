@@ -197,9 +197,9 @@ The canonical control file is `research_program.json`.
 Ralph should move through the flow defined by `researchMode`:
 
 - `experimental_research`:
-  researcher intake, problem framing, evaluation framing, literature review, `idea.md`, validation plan, early exploration, idea convergence, user review gate
+  researcher intake, problem framing, evaluation framing, literature review, `idea.md`, validation plan, early exploration, idea convergence, `final_review`, user review gate
 - `theoretical_research`:
-  researcher intake, problem framing, concept framing, literature review, `idea.md`, proof strategy, Lean-backed formalization checks, idea convergence, user review gate
+  researcher intake, problem framing, concept framing, literature review, `idea.md`, proof strategy, Lean-backed formalization checks, idea convergence, `final_review`, user review gate
 
 Implementation in `src/`, benchmark tuning, or any other post-review execution require explicit user intervention.
 

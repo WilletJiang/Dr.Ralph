@@ -27,7 +27,8 @@ const STAGE_MARKERS: Record<ResearchMode, Record<string, string>> = {
     validation_plan: "proving the idea right instead of trying to prove it wrong quickly",
     early_exploration: "accidental implementation effects, leakage, noise, or benchmark quirks",
     idea_convergence: "sunk-cost bias, elegance bias, or narrative neatness",
-    user_review: "handoff and stop gate",
+    final_review: "final AI review controller",
+    user_review: "pure handoff and stop gate after `final_review`",
   },
   theoretical_research: {
     problem_framing: "unattackable, underspecified, or artificially inflated claim",
@@ -37,7 +38,8 @@ const STAGE_MARKERS: Record<ResearchMode, Record<string, string>> = {
     proof_strategy: "narrative built from unvalidated intuitions",
     lean_formalization: "negative formalization evidence",
     idea_convergence: "not yet refuted",
-    user_review: "transparent handoff to human review",
+    final_review: "final AI review controller",
+    user_review: "transparent handoff and stop gate after `final_review`",
   },
 };
 
@@ -68,6 +70,8 @@ describe("prompt builder", () => {
         expect(prompt).toContain("## Stage-Specific Outer-Loop Harness");
         expect(prompt).toContain(`### Current Stage: \`${stage}\``);
         expect(prompt).toContain(STAGE_MARKERS[researchMode][stage]);
+        expect(prompt).toContain("Review status");
+        expect(prompt).toContain("Autonomous review rework allowed");
 
         if (researchMode === "experimental_research") {
           expect(prompt).toContain("metric gaming");
@@ -78,8 +82,60 @@ describe("prompt builder", () => {
           expect(prompt).not.toContain("metric gaming");
           expect(prompt).not.toContain("benchmark leakage");
         }
+
+        if (stage === "final_review") {
+          expect(prompt).toContain("review.nextAction");
+          expect(prompt).toContain("review.reopenStage");
+          expect(prompt).toContain("review.reworkGoals");
+
+          if (researchMode === "experimental_research") {
+            expect(prompt).toContain("large-scale GPU execution");
+            expect(prompt).toContain("algorithmically dated");
+          } else {
+            expect(prompt).not.toContain("large-scale GPU execution");
+            expect(prompt).not.toContain("algorithmically dated");
+          }
+        }
       }
     }
+  });
+
+  it("injects a mandatory rework context block for reopened stages", async () => {
+    const control = await loadTemplateControl("experimental_research");
+    control.review = {
+      status: "complete",
+      cycle: 1,
+      nextAction: "autonomous_rework",
+      handoffRecommendation: "",
+      reopenStage: "validation_plan",
+      reworkGoals: ["Tighten the decisive experiment plan"],
+      confidence: "medium",
+      evidenceStrength: "mixed",
+      finalClaim: "The idea is not ready for handoff.",
+      strongestSupport: ["The mechanism still looks plausible."],
+      strongestCounterevidence: ["The current evidence does not isolate the mechanism cleanly."],
+      hiddenAssumptions: ["The plan is decisive enough."],
+      alternativeExplanationsOrObstructions: ["Observed gains may still be confounded."],
+      fitToRequirements: ["The work still fits the setup."],
+      residualRisks: ["The evaluation plan is not sharp enough."],
+      reviewerQuestions: ["Which experiment would actually disambiguate the mechanism?"],
+      suggestedNextStep: "Reopen validation planning.",
+      completedAt: "2026-04-21T00:00:00.000Z",
+    };
+
+    const prompt = await buildRunPrompt({
+      tool: "codex",
+      control,
+      currentStage: "validation_plan",
+      currentItemId: "ER-005",
+    });
+
+    expect(prompt).toContain("## Active Rework Context");
+    expect(prompt).toContain("This stage is running on a reopened path");
+    expect(prompt).toContain("Tighten the decisive experiment plan");
+    expect(prompt).toContain("Which experiment would actually disambiguate the mechanism?");
+    expect(prompt).toContain("The current evidence does not isolate the mechanism cleanly.");
+    expect(prompt).toContain("its review findings are the mandatory agenda for the reopened loop");
   });
 
   it("uses a post-review boundary block for implementation and benchmark_tuning", async () => {

@@ -2,11 +2,13 @@ import { stat } from "node:fs/promises";
 
 import { appendSessionEvent, createSession, readSessionState, writeSessionState } from "./sessions.js";
 import {
+  applyFinalReviewDecision,
   getArtifactPaths,
   getCurrentItemId,
   getCurrentStage,
   getAutomationState,
   readControlFile,
+  writeControlFile,
 } from "./project.js";
 import {
   chooseBackend,
@@ -154,6 +156,24 @@ export async function runResearch(
     }
 
     control = await readControlFile(project);
+    const reviewTransition = applyFinalReviewDecision(control);
+    if (reviewTransition.blockedReason) {
+      session.currentStage = getCurrentStage(control);
+      session.currentItemId = getCurrentItemId(control);
+      session.lifecycleState = "blocked";
+      session.latestError = reviewTransition.blockedReason;
+      await appendSessionEvent(project, {
+        timestamp: new Date().toISOString(),
+        sessionId: session.sessionId,
+        type: "run.blocked",
+        data: { reason: session.latestError },
+      });
+      await writeSessionState(project, session);
+      return session;
+    }
+    if (reviewTransition.controlChanged) {
+      await writeControlFile(project, control);
+    }
     syncSessionFromControl(context, result, control);
     const after = await snapshotArtifacts(artifacts);
     await emitArtifactDiff(project, session, before, after);

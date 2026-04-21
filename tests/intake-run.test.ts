@@ -19,6 +19,21 @@ async function makeProject() {
   return initProject(join(dir, "proj"), false, "experimental_research");
 }
 
+async function moveProjectToFinalReview(project: Awaited<ReturnType<typeof makeProject>>) {
+  const control = await readControlFile(project);
+  for (const story of (control.userStories ?? []) as Record<string, unknown>[]) {
+    if (story.stage === "final_review") {
+      break;
+    }
+    if (story.requiresUserIntervention === true) {
+      continue;
+    }
+    story.status = "promoted";
+    story.passes = true;
+  }
+  await writeControlFile(project, control);
+}
+
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
@@ -250,6 +265,139 @@ describe("intake and run behavior", () => {
       expect(prompts[0]).toContain("### Current Stage: `problem_framing`");
       expect(prompts[1]).toContain("### Current Stage: `evaluation_framing`");
       expect(prompts[0]).not.toBe(prompts[1]);
+    } finally {
+      runTurn.mockRestore();
+    }
+  });
+
+  it("requeues an earlier stage after final_review requests autonomous rework", async () => {
+    const project = await makeProject();
+    await intakeSet(project, {
+      background: "systems researcher",
+      requirements: "review-driven autonomous rework",
+      resources: "local test only",
+      collaboration: "stop before implementation",
+      extra: "prefer sharp evidence",
+    });
+    await moveProjectToFinalReview(project);
+
+    const prompts: string[] = [];
+    const runTurn = vi.spyOn(LocalCliBackend.prototype, "runTurn").mockImplementation(async (context) => {
+      prompts.push(context.prompt);
+
+      if (prompts.length === 1) {
+        const control = await readControlFile(project);
+        control.review = {
+          status: "complete",
+          cycle: 0,
+          nextAction: "autonomous_rework",
+          handoffRecommendation: "",
+          reopenStage: "validation_plan",
+          reworkGoals: ["Tighten the decisive experiment plan"],
+          confidence: "medium",
+          evidenceStrength: "mixed",
+          finalClaim: "The idea is not yet ready for handoff.",
+          strongestSupport: ["The mechanism still looks plausible."],
+          strongestCounterevidence: ["The current evidence does not cleanly isolate the mechanism."],
+          hiddenAssumptions: ["The experiment plan is decisive enough."],
+          alternativeExplanationsOrObstructions: ["Observed gains may still be confounded."],
+          fitToRequirements: ["The work still fits the user's setup."],
+          residualRisks: ["The review still finds unresolved confounds."],
+          reviewerQuestions: ["Should validation planning be reopened?"],
+          suggestedNextStep: "Reopen validation planning before handoff.",
+          completedAt: "",
+        };
+        await writeControlFile(project, control);
+        return {
+          lifecycleState: "completed",
+          finalResponse: "continue",
+        };
+      }
+
+      return {
+        lifecycleState: "completed",
+        finalResponse: "<promise>COMPLETE</promise>",
+      };
+    });
+
+    try {
+      await runResearch(project, {
+        tool: "amp",
+        model: "gpt5.4-xhigh",
+        maxIterations: 2,
+      });
+
+      expect(prompts).toHaveLength(2);
+      expect(prompts[0]).toContain("### Current Stage: `final_review`");
+      expect(prompts[1]).toContain("### Current Stage: `validation_plan`");
+      expect(prompts[1]).toContain("## Active Rework Context");
+      expect(prompts[1]).toContain("Tighten the decisive experiment plan");
+      expect(prompts[1]).toContain("Should validation planning be reopened?");
+    } finally {
+      runTurn.mockRestore();
+    }
+  });
+
+  it("advances to user_review after final_review chooses handoff_to_user", async () => {
+    const project = await makeProject();
+    await intakeSet(project, {
+      background: "systems researcher",
+      requirements: "review-driven handoff",
+      resources: "local test only",
+      collaboration: "stop before implementation",
+      extra: "prefer honest rejection over weak wins",
+    });
+    await moveProjectToFinalReview(project);
+
+    const prompts: string[] = [];
+    const runTurn = vi.spyOn(LocalCliBackend.prototype, "runTurn").mockImplementation(async (context) => {
+      prompts.push(context.prompt);
+
+      if (prompts.length === 1) {
+        const control = await readControlFile(project);
+        control.review = {
+          status: "complete",
+          cycle: 1,
+          nextAction: "handoff_to_user",
+          handoffRecommendation: "reject",
+          reopenStage: "",
+          reworkGoals: [],
+          confidence: "medium",
+          evidenceStrength: "mixed",
+          finalClaim: "The idea is reviewer-ready but not strong enough to approve automatically.",
+          strongestSupport: ["The evidence trail is complete."],
+          strongestCounterevidence: ["The core claim still has material weaknesses."],
+          hiddenAssumptions: ["The mechanism may not generalize."],
+          alternativeExplanationsOrObstructions: ["A baseline may explain some of the result."],
+          fitToRequirements: ["The work stayed within the user's constraints."],
+          residualRisks: ["Human judgment is still required."],
+          reviewerQuestions: ["Should this line of work be rejected or redirected?"],
+          suggestedNextStep: "Hand off for human review.",
+          completedAt: "",
+        };
+        await writeControlFile(project, control);
+        return {
+          lifecycleState: "completed",
+          finalResponse: "continue",
+        };
+      }
+
+      return {
+        lifecycleState: "completed",
+        finalResponse: "<promise>COMPLETE</promise>",
+      };
+    });
+
+    try {
+      await runResearch(project, {
+        tool: "amp",
+        model: "gpt5.4-xhigh",
+        maxIterations: 2,
+      });
+
+      expect(prompts).toHaveLength(2);
+      expect(prompts[0]).toContain("### Current Stage: `final_review`");
+      expect(prompts[1]).toContain("### Current Stage: `user_review`");
     } finally {
       runTurn.mockRestore();
     }

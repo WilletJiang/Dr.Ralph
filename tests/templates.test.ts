@@ -46,4 +46,32 @@ describe("research mode templates", () => {
       access(join(root, "templates", "formalized_research"), fsConstants.F_OK),
     ).rejects.toBeDefined();
   });
+
+  it("ships final_review and structured review policy in both mode templates", async () => {
+    const root = packageRoot();
+
+    for (const researchMode of ["experimental_research", "theoretical_research"] as const) {
+      const control = JSON.parse(
+        await readFile(join(root, "templates", researchMode, "research_program.json"), "utf8"),
+      ) as Record<string, unknown>;
+      const automation = (control.automation ?? {}) as Record<string, unknown>;
+      const review = (control.review ?? {}) as Record<string, unknown>;
+      const stages = ((control.userStories ?? []) as Record<string, unknown>[]).map((story) =>
+        String(story.stage),
+      );
+
+      expect(stages).toContain("final_review");
+      expect(stages).toContain("user_review");
+      expect((automation.reviewReworkPolicy ?? {}) as Record<string, unknown>).toMatchObject({
+        allowAutonomousRework: true,
+        maxCycles: null,
+      });
+      expect(review).toMatchObject({
+        status: "pending",
+        cycle: 0,
+        nextAction: "",
+        reopenStage: "",
+      });
+    }
+  });
 });

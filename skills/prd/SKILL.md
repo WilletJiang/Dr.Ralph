@@ -102,6 +102,7 @@ For `experimental_research`, normally include:
 - validation plan
 - early exploration
 - idea convergence
+- final review
 - user review gate
 - implementation and tuning only if explicitly post-review
 
@@ -115,6 +116,7 @@ For `theoretical_research`, normally include:
 - proof strategy
 - Lean-backed formalization
 - idea convergence
+- final review
 - user review gate
 
 ### 8. Candidate Research Items

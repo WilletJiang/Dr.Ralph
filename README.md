@@ -114,9 +114,9 @@ That file exports `LEAN4_PLUGIN_ROOT`, `LEAN4_SCRIPTS`, and `LEAN4_REFS`.
 
 The main control file is `research_program.json`. A supported Ralph project uses the canonical layout: `research_program.json` and `.ralph/project.json` in the project root. The control file defines the `researchMode`, research question, researcher context, artifact locations, taste rules, automation boundary, and queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
 
-In practice, the flow is: initialize the project with `ralph init`, fill intake, run the loop, inspect `idea.md`, `research/final-review.md`, and the evidence under `experiments/early-exploration/`, then make a human decision about whether the idea deserves anything beyond review. The repo files are the durable state; individual model conversations are intentionally disposable.
+In practice, the flow is: initialize the project with `ralph init`, fill intake, run the loop through convergence and `final_review`, let Ralph decide whether the evidence deserves autonomous rework or human handoff, then inspect `idea.md`, `research/final-review.md`, the structured `review` panel in `research_program.json`, and the evidence under `experiments/early-exploration/`. The repo files are the durable state; individual model conversations are intentionally disposable.
 
-The autonomous stage order depends on `researchMode`. Experimental projects move through problem framing, evaluation framing, literature review, idea proposal, validation planning, early exploration, and idea convergence. Theoretical projects move through problem framing, concept framing, literature review, statement drafting, proof strategy, Lean-backed formalization checks, and then convergence.
+The autonomous stage order depends on `researchMode`. Experimental projects move through problem framing, evaluation framing, literature review, idea proposal, validation planning, early exploration, idea convergence, `final_review`, and then the `user_review` stop gate. Theoretical projects move through problem framing, concept framing, literature review, statement drafting, proof strategy, Lean-backed formalization checks, idea convergence, `final_review`, and then the `user_review` stop gate.
 
 ## Taste
 
@@ -136,7 +136,7 @@ Before the loop can start, run `ralph intake` or fill `research/intake.md` and m
 
 Early exploration always lives under `experiments/early-exploration/`, but the content differs by mode. Experimental projects save decisive runs, configs, logs, and summaries. Theoretical projects save statement drafts, Lean-backed checks, proof fragments, and blocker analysis.
 
-When the major unknowns are resolved, the loop should stop exploring, rewrite `idea.md` professionally, write `research/final-review.md`, set `automation.state` to `awaiting_user_review`, and halt.
+When the major unknowns are resolved, the loop should stop exploring, rewrite `idea.md` professionally, run `final_review`, and either reopen a concrete earlier stage for another autonomous cycle or prepare a handoff package. Only `user_review` sets `automation.state` to `awaiting_user_review` and halts the loop.
 
 ## Notes
 
