@@ -8,6 +8,7 @@ import {
   ArtifactPaths,
   DoctorCheck,
   DoctorResult,
+  HandoffGuards,
   LocatedProject,
   ProjectMetadata,
   ResearchMode,
@@ -25,6 +26,19 @@ import {
 import { provisionTheoreticalTooling } from "./theoretical-tooling.js";
 
 type StoryRecord = Record<string, unknown>;
+
+interface HandoffReadiness {
+  ready: boolean;
+  failingStage?: string;
+  reason?: string;
+}
+
+interface ReviewDecisionResult {
+  controlChanged: boolean;
+  blockedReason?: string;
+  reopenedStage?: string;
+  repairReason?: string;
+}
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -228,6 +242,33 @@ export function getReviewReworkPolicy(control: Record<string, unknown>): ReviewR
   };
 }
 
+export function getHandoffGuards(control: Record<string, unknown>): HandoffGuards {
+  const automation = asRecord(control.automation) ?? {};
+  const raw = asRecord(automation.handoffGuards) ?? {};
+  const researchMode = getResearchMode(control);
+  const defaults: HandoffGuards =
+    researchMode === "theoretical_research"
+      ? {
+          requiredPassingStages: ["lean_formalization"],
+          forbidBlockedPriorStages: true,
+        }
+      : {
+          requiredPassingStages: [],
+          forbidBlockedPriorStages: true,
+        };
+
+  return {
+    requiredPassingStages:
+      Array.isArray(raw.requiredPassingStages)
+        ? asStringList(raw.requiredPassingStages)
+        : defaults.requiredPassingStages,
+    forbidBlockedPriorStages:
+      typeof raw.forbidBlockedPriorStages === "boolean"
+        ? raw.forbidBlockedPriorStages
+        : defaults.forbidBlockedPriorStages,
+  };
+}
+
 function writeReviewPanel(control: Record<string, unknown>, review: ReviewPanel): void {
   control.review = {
     status: review.status,
@@ -261,10 +302,233 @@ function findStoryIndex(stories: StoryRecord[], stage: string, maxIndex = storie
   return -1;
 }
 
-export function applyFinalReviewDecision(control: Record<string, unknown>): {
-  controlChanged: boolean;
-  blockedReason?: string;
-} {
+function findUserReviewIndex(stories: StoryRecord[], minIndex = 0): number {
+  return stories.findIndex(
+    (story, index) =>
+      index >= minIndex &&
+      asString(story.stage) === "user_review" &&
+      story.requiresUserIntervention !== true,
+  );
+}
+
+function setAutomationState(control: Record<string, unknown>, state: string): void {
+  const automation = asRecord(control.automation);
+  if (automation) {
+    automation.state = state;
+    return;
+  }
+  control.automation = { state };
+}
+
+function normalizeGoalList(existing: string[], nextGoal: string): string[] {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+
+  for (const goal of [...existing, nextGoal]) {
+    if (!seen.has(goal)) {
+      seen.add(goal);
+      merged.push(goal);
+    }
+  }
+
+  return merged;
+}
+
+function evaluateHandoffReadinessAgainstStories(
+  control: Record<string, unknown>,
+  stories: StoryRecord[],
+  finalReviewIndex: number,
+): HandoffReadiness {
+  const guards = getHandoffGuards(control);
+  let earliestFailure: { index: number; stage: string; reason: string } | null = null;
+
+  const recordFailure = (index: number, stage: string, reason: string): void => {
+    if (!earliestFailure || index < earliestFailure.index) {
+      earliestFailure = { index, stage, reason };
+    }
+  };
+
+  if (guards.forbidBlockedPriorStages) {
+    for (let index = 0; index <= finalReviewIndex; index += 1) {
+      const story = stories[index];
+      if (story.requiresUserIntervention === true) {
+        continue;
+      }
+      if (story.status === "blocked") {
+        const stage = asString(story.stage) ?? "unknown";
+        recordFailure(index, stage, `Stage '${stage}' is blocked and must be reopened before handoff.`);
+      }
+    }
+  }
+
+  for (const requiredStage of guards.requiredPassingStages) {
+    const index = findStoryIndex(stories, requiredStage, finalReviewIndex);
+    if (index < 0) {
+      recordFailure(
+        finalReviewIndex,
+        requiredStage,
+        `Configured handoff guard stage '${requiredStage}' is missing from the autonomous stage list.`,
+      );
+      continue;
+    }
+
+    const story = stories[index];
+    if (story.status !== "promoted" || story.passes !== true) {
+      recordFailure(
+        index,
+        requiredStage,
+        `Required handoff guard stage '${requiredStage}' has not passed yet.`,
+      );
+    }
+  }
+
+  if (!earliestFailure) {
+    return { ready: true };
+  }
+
+  return {
+    ready: false,
+    failingStage: earliestFailure.stage,
+    reason: earliestFailure.reason,
+  };
+}
+
+export function evaluateHandoffReadiness(control: Record<string, unknown>): HandoffReadiness {
+  const stories = Array.isArray(control.userStories) ? (control.userStories as StoryRecord[]) : [];
+  const finalReviewIndex = findStoryIndex(stories, "final_review");
+  if (finalReviewIndex < 0) {
+    return {
+      ready: false,
+      failingStage: "final_review",
+      reason: "No auto-eligible final_review stage exists in the control file.",
+    };
+  }
+
+  const userReviewIndex = findUserReviewIndex(stories, finalReviewIndex + 1);
+  if (userReviewIndex < 0) {
+    return {
+      ready: false,
+      failingStage: "user_review",
+      reason: "No downstream user_review gate exists in the control file.",
+    };
+  }
+
+  return evaluateHandoffReadinessAgainstStories(control, stories, finalReviewIndex);
+}
+
+function queueReopenedPath(
+  control: Record<string, unknown>,
+  review: ReviewPanel,
+  stories: StoryRecord[],
+  finalReviewIndex: number,
+  userReviewIndex: number,
+  reopenStage: string,
+  reworkGoals: string[],
+  completedAt: string,
+  repairReason?: string,
+): ReviewDecisionResult {
+  const policy = getReviewReworkPolicy(control);
+  if (!policy.allowAutonomousRework) {
+    return {
+      controlChanged: false,
+      blockedReason: repairReason
+        ? `Cannot hand off because ${repairReason} Autonomous rework is disabled by policy.`
+        : "final_review requested autonomous_rework, but automation.reviewReworkPolicy disallows it.",
+    };
+  }
+
+  if (policy.maxCycles !== null && review.cycle >= policy.maxCycles) {
+    return {
+      controlChanged: false,
+      blockedReason:
+        "final_review requested autonomous_rework after reaching automation.reviewReworkPolicy.maxCycles.",
+    };
+  }
+
+  const reopenIndex = findStoryIndex(stories, reopenStage, finalReviewIndex - 1);
+  if (reopenIndex < 0) {
+    return {
+      controlChanged: false,
+      blockedReason:
+        `final_review requested autonomous_rework with reopenStage '${reopenStage}', which is not a valid earlier auto stage.`,
+    };
+  }
+
+  for (let index = reopenIndex; index <= finalReviewIndex; index += 1) {
+    const story = stories[index];
+    if (story.requiresUserIntervention === true) {
+      continue;
+    }
+    story.status = "queued";
+    story.passes = false;
+  }
+
+  const userReviewItem = stories[userReviewIndex];
+  userReviewItem.status = "queued";
+  userReviewItem.passes = false;
+  setAutomationState(control, "running");
+  writeReviewPanel(control, {
+    ...review,
+    cycle: review.cycle + 1,
+    nextAction: "autonomous_rework",
+    handoffRecommendation: "",
+    reopenStage,
+    reworkGoals,
+    suggestedNextStep: repairReason
+      ? `Reopen '${reopenStage}' and resolve the unmet handoff guard before another final review.`
+      : review.suggestedNextStep,
+    completedAt,
+  });
+
+  return {
+    controlChanged: true,
+    reopenedStage: reopenStage,
+    repairReason,
+  };
+}
+
+export function repairInvalidUserReviewHandoff(control: Record<string, unknown>): ReviewDecisionResult {
+  if (getAutomationState(control) !== "awaiting_user_review") {
+    return { controlChanged: false };
+  }
+
+  const review = getReviewPanel(control);
+  if (review.status !== "complete" || review.nextAction !== "handoff_to_user") {
+    return { controlChanged: false };
+  }
+
+  const readiness = evaluateHandoffReadiness(control);
+  if (readiness.ready) {
+    return { controlChanged: false };
+  }
+
+  const stories = Array.isArray(control.userStories) ? (control.userStories as StoryRecord[]) : [];
+  const finalReviewIndex = findStoryIndex(stories, "final_review");
+  const userReviewIndex = findUserReviewIndex(stories, finalReviewIndex + 1);
+  if (finalReviewIndex < 0 || userReviewIndex < 0 || !readiness.failingStage || !readiness.reason) {
+    return {
+      controlChanged: false,
+      blockedReason: readiness.reason ?? "Invalid user_review handoff cannot be repaired automatically.",
+    };
+  }
+
+  return queueReopenedPath(
+    control,
+    review,
+    stories,
+    finalReviewIndex,
+    userReviewIndex,
+    readiness.failingStage,
+    normalizeGoalList(
+      review.reworkGoals,
+      `Resolve handoff guard before user review: ${readiness.reason}`,
+    ),
+    new Date().toISOString(),
+    readiness.reason,
+  );
+}
+
+export function applyFinalReviewDecision(control: Record<string, unknown>): ReviewDecisionResult {
   if (getCurrentStage(control) !== "final_review") {
     return { controlChanged: false };
   }
@@ -283,12 +547,7 @@ export function applyFinalReviewDecision(control: Record<string, unknown>): {
     };
   }
 
-  const userReviewIndex = stories.findIndex(
-    (story, index) =>
-      index > finalReviewIndex &&
-      asString(story.stage) === "user_review" &&
-      story.requiresUserIntervention !== true,
-  );
+  const userReviewIndex = findUserReviewIndex(stories, finalReviewIndex + 1);
   if (userReviewIndex < 0) {
     return {
       controlChanged: false,
@@ -297,7 +556,6 @@ export function applyFinalReviewDecision(control: Record<string, unknown>): {
   }
 
   const finalReviewItem = stories[finalReviewIndex];
-  const userReviewItem = stories[userReviewIndex];
   const completedAt = review.completedAt || new Date().toISOString();
 
   if (review.nextAction === "handoff_to_user") {
@@ -309,8 +567,34 @@ export function applyFinalReviewDecision(control: Record<string, unknown>): {
       };
     }
 
+    const readiness = evaluateHandoffReadinessAgainstStories(control, stories, finalReviewIndex);
+    if (!readiness.ready) {
+      if (!readiness.failingStage || !readiness.reason) {
+        return {
+          controlChanged: false,
+          blockedReason: "final_review handoff failed readiness checks for an unknown reason.",
+        };
+      }
+
+      return queueReopenedPath(
+        control,
+        review,
+        stories,
+        finalReviewIndex,
+        userReviewIndex,
+        readiness.failingStage,
+        normalizeGoalList(
+          review.reworkGoals,
+          `Resolve handoff guard before user review: ${readiness.reason}`,
+        ),
+        completedAt,
+        readiness.reason,
+      );
+    }
+
     finalReviewItem.status = "promoted";
     finalReviewItem.passes = true;
+    const userReviewItem = stories[userReviewIndex];
     userReviewItem.status = "queued";
     userReviewItem.passes = false;
     writeReviewPanel(control, { ...review, completedAt });
@@ -333,41 +617,16 @@ export function applyFinalReviewDecision(control: Record<string, unknown>): {
     };
   }
 
-  if (policy.maxCycles !== null && review.cycle >= policy.maxCycles) {
-    return {
-      controlChanged: false,
-      blockedReason:
-        "final_review requested autonomous_rework after reaching automation.reviewReworkPolicy.maxCycles.",
-    };
-  }
-
-  const reopenIndex = findStoryIndex(stories, review.reopenStage, finalReviewIndex - 1);
-  if (reopenIndex < 0) {
-    return {
-      controlChanged: false,
-      blockedReason:
-        "final_review requested autonomous_rework with a reopenStage that is not a valid earlier auto stage.",
-    };
-  }
-
-  for (let index = reopenIndex; index <= finalReviewIndex; index += 1) {
-    const story = stories[index];
-    if (story.requiresUserIntervention === true) {
-      continue;
-    }
-    story.status = "queued";
-    story.passes = false;
-  }
-
-  userReviewItem.status = "queued";
-  userReviewItem.passes = false;
-  writeReviewPanel(control, {
-    ...review,
-    cycle: review.cycle + 1,
+  return queueReopenedPath(
+    control,
+    review,
+    stories,
+    finalReviewIndex,
+    userReviewIndex,
+    review.reopenStage,
+    review.reworkGoals,
     completedAt,
-  });
-
-  return { controlChanged: true };
+  );
 }
 
 export async function initProject(
@@ -486,6 +745,18 @@ async function findLatestSessionState(project: LocatedProject): Promise<SessionS
   return candidates[0]?.state ?? null;
 }
 
+function buildStageCounts(control: Record<string, unknown>): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const stories = Array.isArray(control.userStories) ? control.userStories : [];
+
+  for (const story of stories as Record<string, unknown>[]) {
+    const status = asString(story.status) ?? "unknown";
+    counts[status] = (counts[status] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export async function getStatus(project: LocatedProject): Promise<StatusResult> {
   const control = await readControlFile(project);
   const latestSession = await findLatestSessionState(project);
@@ -506,7 +777,11 @@ export async function getStatus(project: LocatedProject): Promise<StatusResult> 
     currentStage: getCurrentStage(control),
     latestSessionId: latestSession?.sessionId ?? null,
     latestSessionState: latestSession?.lifecycleState ?? null,
+    latestSessionProvider: latestSession?.provider ?? null,
+    latestSessionBackend: latestSession?.backend ?? null,
+    latestSessionModel: latestSession?.model ?? null,
     awaitingUserReview: automationState === "awaiting_user_review",
+    stageCounts: buildStageCounts(control),
     paths,
   };
 }

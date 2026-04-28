@@ -81,6 +81,12 @@
       "allowAutonomousRework": true,
       "maxCycles": null
     },
+    "handoffGuards": {
+      "requiredPassingStages": [
+        "lean_formalization"
+      ],
+      "forbidBlockedPriorStages": true
+    },
     "requiresUserInterventionFor": [],
     "notes": "Theoretical projects stop at the user review gate. final_review may reopen earlier autonomous stages before user_review."
   },
@@ -242,19 +248,23 @@
       "id": "TR-006",
       "stage": "lean_formalization",
       "title": "Run Lean-backed theorem and proof validation checks",
-      "hypothesis": "Small, decisive Lean-backed checks can kill or sharpen a theoretical idea before it hardens into self-deception.",
+      "hypothesis": "Substantive Lean-backed checks can kill or sharpen a theoretical idea before it hardens into self-deception.",
       "deliverables": [
         "experiments/early-exploration/plan.md",
         "experiments/early-exploration/live-log.md",
-        "idea.md"
+        "idea.md",
+        "Lean theorem files or a concrete Lean blocker memo"
       ],
       "constraints": [
         "Use the configured lean4_skills_plus_lsp stack unless a hard blocker is found",
-        "Record attempted examples, obstructions, failed proof routes, and Lean-backed findings",
+        "Do not promote this stage on toy-only models, vacuous headers, or purely cosmetic theorem skeletons",
+        "Formalize the strongest load-bearing theorem, obstruction, or lemma that the current idea honestly supports",
+        "Record attempted examples, obstructions, failed proof routes, sorry analysis, axiom checks, build results, and Lean-backed findings",
         "Treat negative evidence as first-class"
       ],
       "acceptanceCriteria": [
-        "Perform the planned Lean-backed checks",
+        "Perform substantive Lean-backed checks against the current mathematical claim",
+        "Run the strongest available project build, sorry, and axiom checks",
         "Save the attempted arguments, Lean-backed findings, and outcomes",
         "Update idea.md as evidence sharpens or weakens the claim"
       ],

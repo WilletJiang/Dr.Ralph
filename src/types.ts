@@ -61,6 +61,11 @@ export interface ReviewReworkPolicy {
   maxCycles: number | null;
 }
 
+export interface HandoffGuards {
+  requiredPassingStages: string[];
+  forbidBlockedPriorStages: boolean;
+}
+
 export type LifecycleState =
   | "idle"
   | "awaiting_input"
@@ -75,6 +80,8 @@ export type EventType =
   | "intake.question.presented"
   | "intake.answer.recorded"
   | "run.started"
+  | "run.repaired"
+  | "run.model_fallback"
   | "run.backend.event"
   | "artifact.updated"
   | "run.blocked"
@@ -159,7 +166,11 @@ export interface StatusResult {
   currentStage?: string | null;
   latestSessionId?: string | null;
   latestSessionState?: LifecycleState | null;
+  latestSessionProvider?: ToolName | null;
+  latestSessionBackend?: "codex-sdk" | "local-cli" | null;
+  latestSessionModel?: string | null;
   awaitingUserReview?: boolean;
+  stageCounts?: Record<string, number>;
   paths?: ArtifactPaths;
 }
 
@@ -180,7 +191,7 @@ export interface BackendRunContext {
   session: SessionState;
   prompt: string;
   project: LocatedProject;
-  maxIterations: number;
+  maxIterations: number | null;
 }
 
 export interface BackendRunResult {

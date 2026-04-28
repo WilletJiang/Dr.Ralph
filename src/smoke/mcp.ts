@@ -76,7 +76,7 @@ async function main(): Promise<void> {
         name: "ralph_run",
         arguments: {
           tool: "codex",
-          model: "gpt5.4-xhigh",
+          model: "gpt5.5-xhigh",
           maxIterations: 1,
           projectRoot: projectPath,
         },

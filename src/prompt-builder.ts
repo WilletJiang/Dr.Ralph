@@ -5,6 +5,7 @@ import { findPackageRoot } from "./package-root.js";
 import {
   asString,
   getAutomationState,
+  getHandoffGuards,
   getResearchMode,
   getResearchModeWarning,
   getReviewPanel,
@@ -42,8 +43,10 @@ const STOP_CONDITION = `Reply with:
 
 only when either:
 - \`automation.state\` is \`awaiting_user_review\`
-- there are no remaining auto-eligible queued items before the review gate
-- the control file explicitly says the autonomous loop should stop`;
+- every auto-eligible workflow item through \`user_review\` has reached its valid terminal state
+- the control file explicitly records a hard blocker that prevents further autonomous progress
+
+Do not use \`<promise>COMPLETE</promise>\` merely because the current stage or the current model turn is done. The default runner will keep starting fresh turns until the workflow itself reaches a terminal state.`;
 
 const SHARED_RIGOR_BLOCK = [
   "Operate with greater rigor, attention to detail, and multi-angle verification than a normal research pass.",
@@ -174,8 +177,12 @@ const STAGE_HARNESSES: Record<ResearchMode, Record<string, string>> = {
       "Make the most likely blockers and failure routes explicit before treating the strategy as credible.",
     ].join("\n- "),
     lean_formalization: [
-      "Run Lean-backed statement search, library search, proof-shape feasibility checks, and obstruction hunting using the configured stack.",
-      "Verify paper intuitions against Lean results, examples, failed proof attempts, and counterexamples.",
+      "Run substantive Lean-backed statement search, library search, proof-shape feasibility checks, and obstruction hunting using the configured stack.",
+      "If the workspace is not yet a Lean project, bootstrap a viable project first, including mathlib when the current theorem shape needs it, unless bootstrap itself fails.",
+      "Do not treat a toy-only model, a purely abstract header, or a vacuous theorem as enough to promote this stage when the research claim has concrete mathematical content.",
+      "Formalize the strongest current theorem, obstruction, or load-bearing lemma that can honestly be expressed in the available Lean environment; if that is impossible, record the exact missing definitions or library dependencies.",
+      "Verify paper intuitions against Lean results, examples, failed proof attempts, counterexamples, sorry analysis, axiom checks, and project builds.",
+      "Only mark this stage as blocked after attempting bootstrap or recording a concrete bootstrap failure with enough detail for a reopened loop to act on it.",
       "Challenge whether negative formalization evidence is already strong enough to kill or significantly narrow the claim.",
       "Record both positive and negative findings, and let formal blockers materially update belief.",
     ].join("\n- "),
@@ -338,6 +345,7 @@ function buildControlContext(
   const question = asString(problem.question);
   const review = getReviewPanel(control);
   const reviewPolicy = getReviewReworkPolicy(control);
+  const handoffGuards = getHandoffGuards(control);
 
   return [
     "## Current Control-File Context",
@@ -351,6 +359,12 @@ function buildControlContext(
     `- Review next action: \`${review.nextAction || "unset"}\``,
     `- Autonomous review rework allowed: \`${String(reviewPolicy.allowAutonomousRework)}\``,
     `- Review max cycles: ${reviewPolicy.maxCycles === null ? "none" : String(reviewPolicy.maxCycles)}`,
+    `- Required passing stages before handoff: ${
+      handoffGuards.requiredPassingStages.length > 0
+        ? handoffGuards.requiredPassingStages.map((stage) => `\`${stage}\``).join(", ")
+        : "none"
+    }`,
+    `- Blocked prior stages forbid handoff: \`${String(handoffGuards.forbidBlockedPriorStages)}\``,
     `- Problem question: ${question ?? "not specified"}`,
     ...(researchModeWarning
       ? [
@@ -453,7 +467,7 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "",
     "## Mission",
     "",
-    "Move through the queued autonomous research loop defined by `researchMode` and `userStories`, then stop at the user review gate.",
+    "Work on the current queued stage as the primary unit of progress, update the repository state honestly, and only advance toward the user review gate when the configured handoff guards are satisfied.",
     "",
     "Do not auto-start implementation in `src/`, benchmark tuning, or other post-review execution unless the control file is explicitly changed by a human.",
     "",
@@ -476,7 +490,9 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "3. Update `idea.md` whenever evidence changes the best current idea.",
     "4. Append a research log entry to the configured progress file.",
     "5. `final_review` decides whether to reopen an earlier stage or hand off to the user; only `user_review` sets `automation.state` to `awaiting_user_review` and stops.",
-    "6. When an `Active Rework Context` block is present, its review findings are the mandatory agenda for the reopened loop.",
+    "6. Do not hand off while configured handoff guards are unmet; if a required stage is blocked or unpassed, reopen the earliest failing stage instead of converging speculatively.",
+    "7. When an `Active Rework Context` block is present, its review findings are the mandatory agenda for the reopened loop.",
+    "8. The runner is expected to continue across fresh backend turns until the workflow reaches a real terminal state; do not manufacture a stop just because a single turn completed.",
     "",
     formatCurrentItemContract(currentItem, context.currentStage),
     "",
@@ -499,12 +515,14 @@ export async function buildRunPrompt(context: PromptBuildContext): Promise<strin
     "- Update the structured `review` panel in `research_program.json` before rewriting `research/final-review.md`.",
     "- Fill `review.status`, `review.confidence`, `review.evidenceStrength`, `review.finalClaim`, `review.strongestSupport`, `review.strongestCounterevidence`, `review.hiddenAssumptions`, `review.alternativeExplanationsOrObstructions`, `review.fitToRequirements`, `review.residualRisks`, `review.reviewerQuestions`, and `review.suggestedNextStep` explicitly.",
     "- Choose exactly one `review.nextAction`: `handoff_to_user` or `autonomous_rework`.",
+    "- A handoff is valid only when the configured handoff guards pass; otherwise choose `autonomous_rework`, reopen the earliest failing stage, and state the unmet guard explicitly in `review.reworkGoals`.",
     "- If `review.nextAction` is `autonomous_rework`, specify a concrete earlier `review.reopenStage` and explicit `review.reworkGoals`.",
     "- If `review.nextAction` is `handoff_to_user`, specify `review.handoffRecommendation` and leave `automation.state` unchanged for `user_review` to handle.",
     "",
     "### User Review",
     "- Do not perform another substantive research review here; treat this as the stop boundary only.",
     "- Require `review.status = complete` and `review.nextAction = handoff_to_user` before stopping.",
+    "- Recheck the configured handoff guards before stopping; if they are unmet, do not stop and do not preserve `awaiting_user_review`.",
     "- Set `automation.state` to `awaiting_user_review`.",
     "- Leave the repository ready for a human reviewer to inspect `idea.md` and `research/final-review.md`.",
     "",

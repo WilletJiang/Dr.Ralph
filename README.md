@@ -28,7 +28,7 @@ Theory-mode init has extra requirements: `python3`, `uv`, and network access dur
 
 ## CLI
 
-The CLI is the primary entrypoint. Most people will use four commands: `init`, `intake`, `run`, and `status`.
+The CLI is the primary entrypoint. Most people will use five commands: `init`, `intake`, `run`, `status`, and `dashboard`.
 
 To initialize a project, run one of:
 
@@ -48,7 +48,7 @@ ralph intake set \
   --extra "..."
 ```
 
-Then start the loop with `ralph run`. A typical invocation is just `ralph run`, but you can also pass `--tool`, `--model`, and `--max-iterations`. To inspect state, use `ralph status`, `ralph doctor`, and `ralph paths`. To continue a prior Ralph session log, use `ralph resume <session-id>`; this continues the file-driven workflow, but each new iteration still starts a fresh backend conversation. If you run `ralph` with no arguments inside an initialized project, it opens a small interactive REPL with `status`, `intake`, `run`, `resume`, `show paths`, and `doctor`.
+Then start the loop with `ralph run`. A typical invocation is just `ralph run`; by default it uses `gpt5.5-xhigh` and keeps running fresh backend turns until the workflow reaches a real terminal state. You can still pass `--tool`, `--model`, and `--max-iterations` when you intentionally want a bounded diagnostic run. To inspect state, use `ralph status`, `ralph doctor`, and `ralph paths`. To continue a prior Ralph session log, use `ralph resume <session-id>`; this continues the file-driven workflow, but each new iteration still starts a fresh backend conversation. To watch progress live in a browser, use `ralph dashboard [--session <id>] [--port <number>] [--open]`. If you run `ralph` with no arguments inside an initialized project, it opens a small interactive REPL with `status`, `intake`, `run`, `resume`, `show paths`, and `doctor`.
 
 ## MCP
 
@@ -77,8 +77,7 @@ Example `ralph_run` payload:
 {
   "projectRoot": "/tmp/my-ralph-project",
   "tool": "codex",
-  "model": "gpt5.4-xhigh",
-  "maxIterations": 10
+  "model": "gpt5.5-xhigh"
 }
 ```
 
@@ -115,6 +114,8 @@ That file exports `LEAN4_PLUGIN_ROOT`, `LEAN4_SCRIPTS`, and `LEAN4_REFS`.
 The main control file is `research_program.json`. A supported Ralph project uses the canonical layout: `research_program.json` and `.ralph/project.json` in the project root. The control file defines the `researchMode`, research question, researcher context, artifact locations, taste rules, automation boundary, and queued research items. The queue still uses the legacy key `userStories` for compatibility, but each entry is a staged research item rather than a product task.
 
 In practice, the flow is: initialize the project with `ralph init`, fill intake, run the loop through convergence and `final_review`, let Ralph decide whether the evidence deserves autonomous rework or human handoff, then inspect `idea.md`, `research/final-review.md`, the structured `review` panel in `research_program.json`, and the evidence under `experiments/early-exploration/`. The repo files are the durable state; individual model conversations are intentionally disposable.
+
+The handoff gate is configurable through `automation.handoffGuards`. By default, theoretical projects require `lean_formalization` to pass before handoff, and both modes forbid handing off while any earlier autonomous stage is still blocked. Theoretical Lean validation must be substantive: toy-only models, vacuous headers, or cosmetic theorem skeletons are not enough to promote the stage when the current idea has real mathematical content. If a review tries to hand off prematurely and autonomous rework is allowed, Ralph automatically reopens the earliest failing stage instead of leaving the project wedged at `awaiting_user_review`.
 
 The autonomous stage order depends on `researchMode`. Experimental projects move through problem framing, evaluation framing, literature review, idea proposal, validation planning, early exploration, idea convergence, `final_review`, and then the `user_review` stop gate. Theoretical projects move through problem framing, concept framing, literature review, statement drafting, proof strategy, Lean-backed formalization checks, idea convergence, `final_review`, and then the `user_review` stop gate.
 

@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import packageJson from "../package.json" with { type: "json" };
 import { resolve } from "node:path";
 import { chdir, cwd } from "node:process";
+import { DEFAULT_CODEX_MODEL, DEFAULT_MAX_ITERATIONS } from "./defaults.js";
 import { getDoctor, getStatus, initProject, locateProject } from "./project.js";
 import { intakeSet } from "./intake.js";
 import { runResearch } from "./run.js";
@@ -148,8 +149,8 @@ export async function startMcpServer(): Promise<void> {
       }
       const state = await runResearch(project, {
         tool: tool ?? "codex",
-        model: model ?? "gpt5.4-xhigh",
-        maxIterations: maxIterations ?? 10,
+        model: model ?? DEFAULT_CODEX_MODEL,
+        maxIterations: maxIterations ?? DEFAULT_MAX_ITERATIONS,
         sessionId: session,
       });
       return textResult(state);
@@ -175,8 +176,8 @@ export async function startMcpServer(): Promise<void> {
       }
       const state = await runResearch(project, {
         tool: tool ?? "codex",
-        model: model ?? "gpt5.4-xhigh",
-        maxIterations: maxIterations ?? 10,
+        model: model ?? DEFAULT_CODEX_MODEL,
+        maxIterations: maxIterations ?? DEFAULT_MAX_ITERATIONS,
         sessionId,
       });
       return textResult(state);

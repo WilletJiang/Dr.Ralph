@@ -47,4 +47,30 @@ describe("cli research mode helpers", () => {
       stderr: expect.stringContaining("unknown option '--init-intake'"),
     });
   });
+
+  it("exposes dashboard cli options", async () => {
+    const root = packageRoot();
+    const tsxPath = join(root, "node_modules", ".bin", "tsx");
+
+    const { stdout } = await execFileAsync(tsxPath, ["src/cli-bin.ts", "dashboard", "--help"], {
+      cwd: root,
+    });
+
+    expect(stdout).toContain("--session <id>");
+    expect(stdout).toContain("--port <number>");
+    expect(stdout).toContain("--open");
+  });
+
+  it("documents run defaults as gpt5.5 and unbounded unless capped", async () => {
+    const root = packageRoot();
+    const tsxPath = join(root, "node_modules", ".bin", "tsx");
+
+    const { stdout } = await execFileAsync(tsxPath, ["src/cli-bin.ts", "run", "--help"], {
+      cwd: root,
+    });
+
+    expect(stdout).toContain("gpt5.5-xhigh");
+    expect(stdout).toContain("omitted means run until the");
+    expect(stdout).toContain("workflow reaches a terminal state");
+  });
 });

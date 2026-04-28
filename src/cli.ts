@@ -7,6 +7,8 @@ import { Command } from "commander";
 import { z } from "zod";
 
 import packageJson from "../package.json" with { type: "json" };
+import { openDashboardInBrowser, startDashboardServer } from "./dashboard.js";
+import { DEFAULT_CODEX_MODEL, DEFAULT_MAX_ITERATIONS } from "./defaults.js";
 import { runInteractiveIntake, intakeSet } from "./intake.js";
 import { startMcpServer } from "./mcp-server.js";
 import { getDoctor, getStatus, initProject, locateProject } from "./project.js";
@@ -36,6 +38,14 @@ function printStatus(status: StatusResult): void {
   process.stdout.write(`Current stage: ${status.currentStage ?? "none"}\n`);
   process.stdout.write(`Latest session: ${status.latestSessionId ?? "none"}\n`);
   process.stdout.write(`Latest session state: ${status.latestSessionState ?? "none"}\n`);
+  if (status.latestSessionId) {
+    process.stdout.write(`Latest session provider: ${status.latestSessionProvider ?? "unknown"}\n`);
+    process.stdout.write(`Latest session backend: ${status.latestSessionBackend ?? "unknown"}\n`);
+    process.stdout.write(`Latest session model: ${status.latestSessionModel ?? "unknown"}\n`);
+  }
+  if (status.stageCounts) {
+    process.stdout.write(`Stage counts: ${JSON.stringify(status.stageCounts)}\n`);
+  }
   if (status.awaitingUserReview) {
     process.stdout.write("Project is waiting for user review.\n");
   }
@@ -172,8 +182,8 @@ async function startRepl(project: LocatedProject): Promise<void> {
       if (line === "run") {
         const state = await runResearch(project, {
           tool: "codex",
-          model: "gpt5.4-xhigh",
-          maxIterations: 10,
+          model: DEFAULT_CODEX_MODEL,
+          maxIterations: DEFAULT_MAX_ITERATIONS,
         });
         process.stdout.write(`Run finished with state ${state.lifecycleState}. Session ${state.sessionId}.\n`);
         continue;
@@ -182,8 +192,8 @@ async function startRepl(project: LocatedProject): Promise<void> {
         const sessionId = line.slice("resume ".length).trim();
         const state = await runResearch(project, {
           tool: "codex",
-          model: "gpt5.4-xhigh",
-          maxIterations: 10,
+          model: DEFAULT_CODEX_MODEL,
+          maxIterations: DEFAULT_MAX_ITERATIONS,
           sessionId,
         });
         process.stdout.write(`Resumed session ${state.sessionId}: ${state.lifecycleState}\n`);
@@ -271,21 +281,51 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     });
 
   program
+    .command("dashboard")
+    .description("Start a browser dashboard for project and session progress.")
+    .option("--session <id>", "Inspect a specific session")
+    .option("--port <number>", "Port to bind (0 selects a free port)", "0")
+    .option("--open", "Open the dashboard in the default browser on macOS")
+    .action(async (options) => {
+      const project = await ensureProject();
+      const parsed = z.object({
+        session: z.string().optional(),
+        port: z.coerce.number().int().min(0),
+        open: z.boolean().optional(),
+      }).parse(options);
+      const { url, port } = await startDashboardServer(project, {
+        sessionId: parsed.session,
+        port: parsed.port,
+      });
+      process.stdout.write(`Dashboard running at ${url}\n`);
+      process.stdout.write(`Port: ${port}\n`);
+      if (parsed.open) {
+        openDashboardInBrowser(url);
+      }
+      await new Promise<void>(() => {
+        // Keep the process alive until the user stops it.
+      });
+    });
+
+  program
     .command("run")
     .option("--tool <tool>", "Execution backend tool", "codex")
-    .option("--model <model>", "Model to use", "gpt5.4-xhigh")
-    .option("--max-iterations <number>", "Maximum iterations", "10")
+    .option("--model <model>", "Model to use", DEFAULT_CODEX_MODEL)
+    .option("--max-iterations <number>", "Maximum iterations; omitted means run until the workflow reaches a terminal state")
     .option("--session <id>", "Resume an existing session")
     .option("--json", "Print JSON output")
     .action(async (options) => {
       const parsed = z.object({
         tool: z.enum(["codex", "amp", "claude"]),
         model: z.string(),
-        maxIterations: z.coerce.number().int().positive(),
+        maxIterations: z.coerce.number().int().positive().optional(),
         session: z.string().optional(),
       }).parse(options);
       const project = await ensureProject();
-      const state = await runResearch(project, parsed);
+      const state = await runResearch(project, {
+        ...parsed,
+        maxIterations: parsed.maxIterations ?? DEFAULT_MAX_ITERATIONS,
+      });
       if (options.json) {
         printJson(state);
       } else {
@@ -297,17 +337,21 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     .command("resume")
     .argument("<sessionId>", "Session to resume")
     .option("--tool <tool>", "Execution backend tool", "codex")
-    .option("--model <model>", "Model to use", "gpt5.4-xhigh")
-    .option("--max-iterations <number>", "Maximum iterations", "10")
+    .option("--model <model>", "Model to use", DEFAULT_CODEX_MODEL)
+    .option("--max-iterations <number>", "Maximum iterations; omitted means run until the workflow reaches a terminal state")
     .option("--json", "Print JSON output")
     .action(async (sessionId, options) => {
       const parsed = z.object({
         tool: z.enum(["codex", "amp", "claude"]),
         model: z.string(),
-        maxIterations: z.coerce.number().int().positive(),
+        maxIterations: z.coerce.number().int().positive().optional(),
       }).parse(options);
       const project = await ensureProject();
-      const state = await runResearch(project, { ...parsed, sessionId });
+      const state = await runResearch(project, {
+        ...parsed,
+        maxIterations: parsed.maxIterations ?? DEFAULT_MAX_ITERATIONS,
+        sessionId,
+      });
       if (options.json) {
         printJson(state);
       } else {

@@ -4,6 +4,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 import { appendSessionEvent, createSession, writeSessionState } from "./sessions.js";
+import { DEFAULT_CODEX_MODEL } from "./defaults.js";
 import { getArtifactPaths, readControlFile, requireResearchMode, writeControlFile } from "./project.js";
 import { IntakeAnswers, IntakeField, LocatedProject, ResearchMode, SessionState } from "./types.js";
 
@@ -109,7 +110,7 @@ export async function intakeSet(
   const session = await createSession(project, {
     provider: "codex",
     backend: "local-cli",
-    model: "gpt5.4-xhigh",
+    model: DEFAULT_CODEX_MODEL,
     lifecycleState: "awaiting_input",
     currentStage: "researcher_intake",
     currentItemId: "INTAKE",
@@ -174,7 +175,7 @@ export async function runInteractiveIntake(
   const session = await createSession(project, {
     provider: "codex",
     backend: "local-cli",
-    model: "gpt5.4-xhigh",
+    model: DEFAULT_CODEX_MODEL,
     lifecycleState: "awaiting_input",
     currentStage: "researcher_intake",
     currentItemId: "INTAKE",

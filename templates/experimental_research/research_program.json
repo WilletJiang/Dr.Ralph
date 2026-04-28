@@ -73,6 +73,10 @@
       "allowAutonomousRework": true,
       "maxCycles": null
     },
+    "handoffGuards": {
+      "requiredPassingStages": [],
+      "forbidBlockedPriorStages": true
+    },
     "requiresUserInterventionFor": [
       "implementation",
       "benchmark_tuning"

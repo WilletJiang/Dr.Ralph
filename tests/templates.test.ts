@@ -40,6 +40,24 @@ describe("research mode templates", () => {
     expect(plan).toContain("Lean-Backed Checks");
   });
 
+  it("requires substantive Lean validation in the theoretical control template", async () => {
+    const root = packageRoot();
+    const control = JSON.parse(
+      await readFile(join(root, "templates", "theoretical_research", "research_program.json"), "utf8"),
+    ) as Record<string, unknown>;
+    const leanStage = ((control.userStories ?? []) as Record<string, unknown>[]).find(
+      (story) => story.stage === "lean_formalization",
+    );
+
+    expect(leanStage?.hypothesis).toContain("Substantive Lean-backed checks");
+    expect(leanStage?.constraints).toContain(
+      "Do not promote this stage on toy-only models, vacuous headers, or purely cosmetic theorem skeletons",
+    );
+    expect(leanStage?.acceptanceCriteria).toContain(
+      "Run the strongest available project build, sorry, and axiom checks",
+    );
+  });
+
   it("does not ship a separate formalized_research template anymore", async () => {
     const root = packageRoot();
     await expect(
@@ -66,6 +84,9 @@ describe("research mode templates", () => {
         allowAutonomousRework: true,
         maxCycles: null,
       });
+      expect((automation.handoffGuards ?? {}) as Record<string, unknown>).toMatchObject({
+        forbidBlockedPriorStages: true,
+      });
       expect(review).toMatchObject({
         status: "pending",
         cycle: 0,
@@ -73,5 +94,24 @@ describe("research mode templates", () => {
         reopenStage: "",
       });
     }
+  });
+
+  it("assigns the expected default handoff guards by research mode", async () => {
+    const root = packageRoot();
+    const experimental = JSON.parse(
+      await readFile(join(root, "templates", "experimental_research", "research_program.json"), "utf8"),
+    ) as Record<string, unknown>;
+    const theoretical = JSON.parse(
+      await readFile(join(root, "templates", "theoretical_research", "research_program.json"), "utf8"),
+    ) as Record<string, unknown>;
+
+    expect((((experimental.automation ?? {}) as Record<string, unknown>).handoffGuards ?? {}) as Record<string, unknown>).toMatchObject({
+      requiredPassingStages: [],
+      forbidBlockedPriorStages: true,
+    });
+    expect((((theoretical.automation ?? {}) as Record<string, unknown>).handoffGuards ?? {}) as Record<string, unknown>).toMatchObject({
+      requiredPassingStages: ["lean_formalization"],
+      forbidBlockedPriorStages: true,
+    });
   });
 });

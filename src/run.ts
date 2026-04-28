@@ -1,12 +1,14 @@
 import { stat } from "node:fs/promises";
 
 import { appendSessionEvent, createSession, readSessionState, writeSessionState } from "./sessions.js";
+import { FALLBACK_CODEX_MODEL } from "./defaults.js";
 import {
   applyFinalReviewDecision,
   getArtifactPaths,
   getCurrentItemId,
   getCurrentStage,
   getAutomationState,
+  repairInvalidUserReviewHandoff,
   readControlFile,
   writeControlFile,
 } from "./project.js";
@@ -19,6 +21,13 @@ import {
 } from "./backends.js";
 import { buildRunPrompt } from "./prompt-builder.js";
 import { BackendRunContext, LocatedProject, SessionState, ToolName } from "./types.js";
+
+function isModelAvailabilityFailure(errorText: string | undefined): boolean {
+  if (!errorText) {
+    return false;
+  }
+  return /model .*does not exist|do not have access to it|model .*not supported|not supported when using/i.test(errorText);
+}
 
 async function snapshotArtifacts(paths: ReturnType<typeof getArtifactPaths>) {
   const entries = Object.values(paths);
@@ -56,7 +65,7 @@ async function emitArtifactDiff(
 export interface RunOptions {
   tool: ToolName;
   model: string;
-  maxIterations: number;
+  maxIterations: number | null;
   sessionId?: string;
 }
 
@@ -95,8 +104,36 @@ export async function runResearch(
     return session;
   }
 
-  for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
+  let iteration = 1;
+  while (options.maxIterations === null || iteration <= options.maxIterations) {
     control = await readControlFile(project);
+    const preflightRepair = repairInvalidUserReviewHandoff(control);
+    if (preflightRepair.blockedReason) {
+      session.lifecycleState = "blocked";
+      session.latestError = preflightRepair.blockedReason;
+      await appendSessionEvent(project, {
+        timestamp: new Date().toISOString(),
+        sessionId: session.sessionId,
+        type: "run.blocked",
+        data: { reason: session.latestError },
+      });
+      await writeSessionState(project, session);
+      return session;
+    }
+    if (preflightRepair.controlChanged) {
+      await writeControlFile(project, control);
+      await appendSessionEvent(project, {
+        timestamp: new Date().toISOString(),
+        sessionId: session.sessionId,
+        type: "run.repaired",
+        data: {
+          iteration,
+          phase: "preflight",
+          reopenedStage: preflightRepair.reopenedStage ?? null,
+          reason: preflightRepair.repairReason ?? "Auto-reopened an invalid handoff.",
+        },
+      });
+    }
     if (getAutomationState(control) === "awaiting_user_review") {
       session.lifecycleState = "awaiting_user_review";
       await appendSessionEvent(project, {
@@ -155,6 +192,51 @@ export async function runResearch(
       }
     }
 
+    if (
+      options.tool === "codex" &&
+      session.model !== FALLBACK_CODEX_MODEL &&
+      isModelAvailabilityFailure([result.latestError, result.finalResponse].filter(Boolean).join("\n"))
+    ) {
+      const previousModel = session.model;
+      session.model = FALLBACK_CODEX_MODEL;
+      session.backend = defaultBackendForTool(options.tool);
+      session.lifecycleState = "running";
+      session.latestError = undefined;
+      await writeSessionState(project, session);
+      await appendSessionEvent(project, {
+        timestamp: new Date().toISOString(),
+        sessionId: session.sessionId,
+        type: "run.model_fallback",
+        data: {
+          iteration,
+          fromModel: previousModel,
+          toModel: FALLBACK_CODEX_MODEL,
+          reason: "Requested Codex model is unavailable to the active account.",
+        },
+      });
+
+      const fallbackContext: BackendRunContext = {
+        ...context,
+        session,
+      };
+      const fallbackBackendType = await chooseBackend(fallbackContext);
+      session.backend = fallbackBackendType;
+      await writeSessionState(project, session);
+      try {
+        result =
+          fallbackBackendType === "codex-sdk"
+            ? await new CodexBackend().runTurn(fallbackContext)
+            : await new LocalCliBackend().runTurn(fallbackContext);
+      } catch (error) {
+        if (fallbackBackendType === "codex-sdk") {
+          session.backend = "local-cli";
+          result = await new LocalCliBackend().runTurn(fallbackContext);
+        } else {
+          throw error;
+        }
+      }
+    }
+
     control = await readControlFile(project);
     const reviewTransition = applyFinalReviewDecision(control);
     if (reviewTransition.blockedReason) {
@@ -173,6 +255,19 @@ export async function runResearch(
     }
     if (reviewTransition.controlChanged) {
       await writeControlFile(project, control);
+      if (reviewTransition.reopenedStage) {
+        await appendSessionEvent(project, {
+          timestamp: new Date().toISOString(),
+          sessionId: session.sessionId,
+          type: "run.repaired",
+          data: {
+            iteration,
+            phase: "post-turn",
+            reopenedStage: reviewTransition.reopenedStage,
+            reason: reviewTransition.repairReason ?? "Auto-reopened for autonomous rework.",
+          },
+        });
+      }
     }
     syncSessionFromControl(context, result, control);
     const after = await snapshotArtifacts(artifacts);
@@ -201,7 +296,14 @@ export async function runResearch(
       return session;
     }
 
-    if (result.finalResponse?.includes("<promise>COMPLETE</promise>")) {
+    if (reviewTransition.reopenedStage) {
+      session.lifecycleState = "running";
+      await writeSessionState(project, session);
+      iteration += 1;
+      continue;
+    }
+
+    if (result.finalResponse?.includes("<promise>COMPLETE</promise>") && !getCurrentStage(control)) {
       session.lifecycleState = "completed";
       await appendSessionEvent(project, {
         timestamp: new Date().toISOString(),
@@ -214,10 +316,11 @@ export async function runResearch(
     }
 
     await writeSessionState(project, session);
+    iteration += 1;
   }
 
   session.lifecycleState = "blocked";
-  session.latestError = `Reached max iterations (${options.maxIterations}) without completion.`;
+  session.latestError = `Reached max iterations (${String(options.maxIterations)}) without completion.`;
   await appendSessionEvent(project, {
     timestamp: new Date().toISOString(),
     sessionId: session.sessionId,

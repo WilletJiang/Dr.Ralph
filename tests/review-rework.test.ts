@@ -6,8 +6,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyFinalReviewDecision,
+  evaluateHandoffReadiness,
   getCurrentStage,
+  getHandoffGuards,
   getReviewPanel,
+  repairInvalidUserReviewHandoff,
 } from "../src/project.js";
 import { ResearchMode } from "../src/types.js";
 
@@ -74,7 +77,7 @@ describe("final review rework helper", () => {
 
     const result = applyFinalReviewDecision(control);
 
-    expect(result).toEqual({ controlChanged: true });
+    expect(result).toMatchObject({ controlChanged: true, reopenedStage: "validation_plan" });
     expect(getCurrentStage(control)).toBe("validation_plan");
     expect(findStory(control, "ER-005").status).toBe("queued");
     expect(findStory(control, "ER-006").status).toBe("queued");
@@ -120,6 +123,128 @@ describe("final review rework helper", () => {
     expect(findStory(control, "ER-009").status).toBe("queued");
     expect(getReviewPanel(control).cycle).toBe(1);
     expect(getReviewPanel(control).handoffRecommendation).toBe("redirect");
+  });
+
+  it("auto-reopens theoretical handoff when lean_formalization is still blocked", async () => {
+    const control = await loadTemplateControl("theoretical_research");
+    promoteUntilStage(control, "final_review");
+
+    const lean = findStory(control, "TR-006");
+    lean.status = "blocked";
+    lean.passes = false;
+
+    control.review = {
+      status: "complete",
+      cycle: 1,
+      nextAction: "handoff_to_user",
+      handoffRecommendation: "approve",
+      reopenStage: "",
+      reworkGoals: [],
+      confidence: "medium",
+      evidenceStrength: "mixed",
+      finalClaim: "The idea seems ready.",
+      strongestSupport: ["The framing is crisp."],
+      strongestCounterevidence: ["Lean validation did not run."],
+      hiddenAssumptions: ["The missing Lean pass does not matter."],
+      alternativeExplanationsOrObstructions: [],
+      fitToRequirements: ["The framing is small."],
+      residualRisks: ["Lean validation is still missing."],
+      reviewerQuestions: [],
+      suggestedNextStep: "Hand off now.",
+      completedAt: "",
+    };
+
+    const result = applyFinalReviewDecision(control);
+
+    expect(result.controlChanged).toBe(true);
+    expect(result.reopenedStage).toBe("lean_formalization");
+    expect(getCurrentStage(control)).toBe("lean_formalization");
+    expect(getReviewPanel(control).nextAction).toBe("autonomous_rework");
+    expect(getReviewPanel(control).reopenStage).toBe("lean_formalization");
+    expect(getReviewPanel(control).reworkGoals.join("\n")).toContain("Resolve handoff guard");
+  });
+
+  it("honors custom handoff guard stages when deciding readiness", async () => {
+    const control = await loadTemplateControl("experimental_research");
+    promoteUntilStage(control, "final_review");
+
+    ((control.automation ?? {}) as Record<string, unknown>).handoffGuards = {
+      requiredPassingStages: ["literature_review"],
+      forbidBlockedPriorStages: false,
+    };
+
+    expect(getHandoffGuards(control)).toMatchObject({
+      requiredPassingStages: ["literature_review"],
+      forbidBlockedPriorStages: false,
+    });
+    expect(evaluateHandoffReadiness(control).ready).toBe(true);
+
+    const literature = findStory(control, "ER-003");
+    literature.status = "queued";
+    literature.passes = false;
+
+    const readiness = evaluateHandoffReadiness(control);
+    expect(readiness.ready).toBe(false);
+    expect(readiness.failingStage).toBe("literature_review");
+  });
+
+  it("blocks handoff readiness when a prior stage is blocked even if required stages pass", async () => {
+    const control = await loadTemplateControl("experimental_research");
+    promoteUntilStage(control, "final_review");
+
+    const literature = findStory(control, "ER-003");
+    literature.status = "blocked";
+    literature.passes = false;
+
+    const readiness = evaluateHandoffReadiness(control);
+    expect(readiness.ready).toBe(false);
+    expect(readiness.failingStage).toBe("literature_review");
+    expect(readiness.reason).toContain("blocked");
+  });
+
+  it("repairs an invalid awaiting_user_review handoff back to the earliest failing stage", async () => {
+    const control = await loadTemplateControl("theoretical_research");
+    promoteUntilStage(control, "final_review");
+
+    const finalReview = findStory(control, "TR-008");
+    finalReview.status = "promoted";
+    finalReview.passes = true;
+    const userReview = findStory(control, "TR-009");
+    userReview.status = "awaiting_user_review";
+    userReview.passes = true;
+    const lean = findStory(control, "TR-006");
+    lean.status = "blocked";
+    lean.passes = false;
+
+    ((control.automation ?? {}) as Record<string, unknown>).state = "awaiting_user_review";
+    control.review = {
+      status: "complete",
+      cycle: 1,
+      nextAction: "handoff_to_user",
+      handoffRecommendation: "redirect",
+      reopenStage: "",
+      reworkGoals: [],
+      confidence: "medium",
+      evidenceStrength: "mixed",
+      finalClaim: "Current handoff is invalid.",
+      strongestSupport: [],
+      strongestCounterevidence: [],
+      hiddenAssumptions: [],
+      alternativeExplanationsOrObstructions: [],
+      fitToRequirements: [],
+      residualRisks: [],
+      reviewerQuestions: [],
+      suggestedNextStep: "Hand off now.",
+      completedAt: "",
+    };
+
+    const result = repairInvalidUserReviewHandoff(control);
+
+    expect(result.controlChanged).toBe(true);
+    expect(result.reopenedStage).toBe("lean_formalization");
+    expect(((control.automation ?? {}) as Record<string, unknown>).state).toBe("running");
+    expect(getCurrentStage(control)).toBe("lean_formalization");
+    expect(getReviewPanel(control).nextAction).toBe("autonomous_rework");
   });
 
   it("blocks autonomous rework requests that exceed maxCycles", async () => {

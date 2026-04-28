@@ -2,12 +2,12 @@ import { spawn } from "node:child_process";
 import { Codex, type ThreadEvent, type ThreadOptions } from "@openai/codex-sdk";
 
 import { appendSessionEvent } from "./sessions.js";
+import { normalizeCodexModel } from "./defaults.js";
 import { readControlFile, getCurrentItemId, getCurrentStage, getAutomationState } from "./project.js";
 import { BackendRunContext, BackendRunResult, LocatedProject, RalphEvent, ToolName } from "./types.js";
 
 function normalizeCodexThreadOptions(context: BackendRunContext): ThreadOptions {
-  const model = context.session.model === "gpt5.4-xhigh" ? "gpt-5.4" : context.session.model;
-  const modelReasoningEffort = context.session.model === "gpt5.4-xhigh" ? "xhigh" : undefined;
+  const { model, modelReasoningEffort } = normalizeCodexModel(context.session.model);
 
   return {
     model,
@@ -143,11 +143,13 @@ export class LocalCliBackend {
   }
 
   private async runCodexCli(context: BackendRunContext): Promise<BackendRunResult> {
+    const { model, modelReasoningEffort } = normalizeCodexModel(context.session.model);
     const args = [
       "exec",
       "--json",
       "--model",
-      context.session.model,
+      model,
+      ...(modelReasoningEffort ? ["--config", `model_reasoning_effort="${modelReasoningEffort}"`] : []),
       "--dangerously-bypass-approvals-and-sandbox",
       "-",
     ];

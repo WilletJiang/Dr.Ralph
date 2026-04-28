@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     const session = await createSession(project, {
       provider: "codex",
       backend: "codex-sdk",
-      model: "gpt5.4-xhigh",
+      model: "gpt5.5-xhigh",
       lifecycleState: "idle",
       currentStage: "smoke_test",
       currentItemId: "SMOKE-CODEX",

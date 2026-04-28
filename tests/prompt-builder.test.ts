@@ -72,6 +72,8 @@ describe("prompt builder", () => {
         expect(prompt).toContain(STAGE_MARKERS[researchMode][stage]);
         expect(prompt).toContain("Review status");
         expect(prompt).toContain("Autonomous review rework allowed");
+        expect(prompt).toContain("Required passing stages before handoff");
+        expect(prompt).toContain("Blocked prior stages forbid handoff");
 
         if (researchMode === "experimental_research") {
           expect(prompt).toContain("metric gaming");
@@ -79,6 +81,11 @@ describe("prompt builder", () => {
           expect(prompt).not.toContain("conjecture");
         } else {
           expect(prompt).toContain("Lean-first by default");
+          if (stage === "lean_formalization") {
+            expect(prompt).toContain("bootstrap a viable project first");
+            expect(prompt).toContain("toy-only model");
+            expect(prompt).toContain("Formalize the strongest current theorem");
+          }
           expect(prompt).not.toContain("metric gaming");
           expect(prompt).not.toContain("benchmark leakage");
         }
@@ -87,6 +94,7 @@ describe("prompt builder", () => {
           expect(prompt).toContain("review.nextAction");
           expect(prompt).toContain("review.reopenStage");
           expect(prompt).toContain("review.reworkGoals");
+          expect(prompt).toContain("configured handoff guards");
 
           if (researchMode === "experimental_research") {
             expect(prompt).toContain("large-scale GPU execution");
